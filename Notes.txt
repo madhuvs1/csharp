@@ -1,0 +1,265 @@
+Ultimate Csharp Masterclass Krystyna Ślusarczyk
+Section1:
+https://docs.google.com/document/d/143KZel4EeLloysAVyhR0rmdirHnsTDPleRWrxo0jJEs/edit?usp=sharing
+Section2:
+https://docs.google.com/document/d/1chi9W7E0tHe1gN2undJdpyvO3BVUDmzfYjoKEnPOQew/edit?usp=sharing
+Repository:
+https://github.com/KrystynaSlusarczykLearning/UltimateCSharpMasterclass
+
+Section2:
+Obj folder stores intermediate build artifacts and incremental compilation data for all changed files.
+Asp.net To speed up builds during debug or development, modify the project file (.csproj) to disable nonessential build steps such as Razor precompilation and analyzers.
+
+Variables:
+Shortcut: Ctrl+D duplicates the line
+Multiline Comment: ctrl+shift+/   (ctrl+k+c to comment and ctrl+k+u to uncomment)
+
+Implicitly typed variable: var 
+
+REPL (Read Eval Print Loop similar to jshell)
+dotnet tool install -g csharprepl
+csharprepl
+    Gets into interactive mode
+
+C# is a statically typed programming language
+int x= 10; x="hello"; not allowed
+
+Convert.ToInt32 vs int.parse
+    Convert.ToInt32 accepts null, string, double values if its not overflowing
+    int.parse excepts the param to be string
+    However int.TryPase is efficient handles all cases
+
+switch case
+switch(str) {
+    case "fruit":
+    case "Fruit":
+     Console.WriteLine("Its a fruit");
+     break;
+    case "Vegetable":
+     Console.WriteLine("Its a Vegetable");
+     break;
+    default:
+      Console.WriteLine("Its not a fruit or Vegetable");
+     break;
+}
+Switch Expression
+var result =  str switch {
+    "fruit" or "Fruit" => "Its a fruit",
+    "Vegetable" => "Its a Vegetable",
+    _ => "Its not a fruit or Vegetable"
+};
+Console.WriteLine(result);
+
+
+MultiDimensional Array
+char[,] = new char[2,3];  (Two rows 3 columns)
+char[,] char2DArray = new char[,] { {'A','B','C'}, {'D','E','F'} };
+Get rows => char2DArray.GetLength(0);  Get columns => char2DArray.GetLength(1);
+
+VariableNames:
+@string allowed
+1name NOT allowed 
+int NOT allowed
+first&name NOT allowed
+
+Object Oriented programming (OOP) - Based on concept of objects that contain data and methods.
+Objects hold data and behaviors (methods), while a class serves as the blueprint from which those objects are created.
+OOP relies on fundamental concepts Encapsulation, Polymorphism, Abstraction and Inheritance 
+
+AccessModifier: public, private, protected, internal
+protected: 
+    public class Animal { protected string MakeNoise() => "Roar"; }
+    public class Tiger : Animal { }
+    new Tiger().MakeNoise(); compiler error method MakeNoise() can be accessed only inside Animal or Tiger object not outside.
+DateHiding: Using AccessModifier like private and hiding its accessibility outside class
+
+Init:  public int Count {get; init;}
+    Property setter modifier, allows the value to be set only in constructor or object initialization
+
+TopLevel statements:
+Starting with .NET 6, the Program.cs file uses top-level statements, which hide the explicit Program class and Main() method.
+You can restore or override this behavior by adjusting the project settings.
+
+MethodNames: Start with Verb and End with Noun
+
+Encapsulation vs Hiding
+Encapsulation = wrapping data + behavior
+Data hiding = controlling access to that data (using access modifiers private)
+
+MethodOverloading
+    Methods that have the same name but differ in parameter types, number of parameters, or the order of parameters.
+Constructor MethodOverloading
+    Appointment(string name, string days){}
+    Appointment(name):this(name, 7) {}  // here a constructor is calling another constructor
+
+Expression vs statements
+Statements doesn't return a value; eg; Console.WriteLine("hello world")
+Expression that returns a value public int Add(int a, int b){return a+b;}
+Expression Bodied Members: Used when a method, property, or other member consists of a single expression instead of multiple statements.
+    public int Add(int a, int b) => a + b;
+
+Optional parameters:
+    Methods can have optional parameters but has to be compile time constant 
+    public void MakeAppointment(string name, int day=7) - allowed
+    public void MakeAppointment(string name, int day=GetDays()) - NOT allowed
+
+nameof
+    returns the variablename as string 
+    class Person {public string Name;}  -> nameof(Person.Name)
+
+Const (Constant) and Readonly
+Const: Used on variable that has compile time constant (PascalCase) 
+    example: public const double Pi = 3.14159;
+readonly: Variables that can be initialized on declaration or in construtor CANNOT be used in constructors
+   example: public readonly int InstanceId = 1; or public class Instance { public Instance(int instanceId) { InstanceId = instanceId;  } }    
+Casing: const → PascalCase  |  readonly → camelCase (private) or PascalCase (public) 
+
+Static:
+    Used on methods that are stateless
+    Static class can have only static Members, it can have parameterless constructor which executes once and is private by default
+    Instance class can have both Static and Instance members
+
+String Join Split
+    String.Join(",", strArray) => results in a string
+    str.Split(",")  => results in an array, splits string with the delimiter
+
+
+Single Responsibility Principle: A class that has only one reason to change. 
+
+DRY principle (Dont Repeat Yourself) states that we shouldn't have multiple places in the code where the same business decisions are defined.
+
+GlobalUsings
+Namespaces defined in GlobalUsings.cs available for all classes (optionally you can define them in the project file)
+                                <ItemGroup><Using Include="System" /><Using Include="System.Collections.Generic" /></ItemGroup>
+Globalalias
+    global using IO = System.IO;
+
+Enum
+    An enum (short for enumeration) is a special value type that lets you define a set of named constants — typically used to represent a fixed group of related values.
+enum ErrorCode { None = 0, NotFound = 404, ServerError = 500 }
+
+Inheritance (is-a relationship)
+    public class Car {} public class Honda:Car {}  //Honda is a Car
+
+Overriding
+Derived class can override Base class methods provided the base class method is declared virtual
+    class Animal
+    {
+        public virtual void Speak()  {        Console.WriteLine("Animal sound");     }
+    }
+    class Dog : Animal
+    {
+        public override void Speak() { Console.WriteLine("Bark");        }
+    }    
+
+Animal a = new Dog();
+a.Speak(); //output: Bark
+
+Shadowing or Hiding
+Derived class hides Base class method by using "new" each has its own implementation 
+    class Animal
+    {
+        public void Speak()  {        Console.WriteLine("Animal sound");     }
+    }
+    class Dog : Animal
+    {
+        public new void Speak() { Console.WriteLine("Bark");        }
+    }
+Animal animal = new Dog();
+animal.speak(); //output: Animal sound        
+
+Diamond Problem in Inheritance:
+When a class inherits from two or more classes that share a common ancestor, creates a Diamond shape hierarchy. Ambiguity arises if a method is derived in the intermediate classes, end derived class doesn't know which one to use.
+
+System.Object is the baseclass for all classes 
+
+Constructor:
+    Derived class instantiation always calls Base class constructor first. 
+    Animal{Animal(int legs){} }  Cat:Animal { Cat(int legs) : base(legs) {} }
+
+Explicit Conversion:
+    decimal (0.01m) and double are floating point types. decimal has more precision (used in banks) double has less precision (used in scientific calculation)
+    double is faster as its a native type to CPU, decimal is a software emulated type.
+    implicit conversion int x = 2; decimal d = x; 
+    decimal d = 0.01m; int x = d; (not possible as there is a loss), so we do => int x = (int)d;
+
+    enum season {spring, summer, autumn, winter} int x= 11;
+    season s = (season)x;  Here explicit conversion should fail but doesn't. Should be cautious when using explicit
+    For int types, (Enum.IsDefined(typeof(season), x)) For string types, Enum.TryParse()
+    
+    UpCasting DownCasting
+    Animal:Cat Animal:Dog 
+        Animal a = new Dog(); this is upcasting derived class assigned to a base class
+    Animal a = new Dog();
+    Dog = a; This is downcasting, but not safe what if Animal holds Cat instead of Dog
+
+    Is Operator
+    Animal a = new Dog(); a is Dog ? returns true;
+
+    "As" Operator
+    Animal a = new Dog();
+    Cat c = (Cat)animal - Standard cast Expression it will throw Invalid CastException due to incompatible types
+    Cat c = animal as Cat - as cast Expression, returns null instead of exception
+
+Abstract class
+    Class that cannot be instantiated but can be derived from it. Its not must for an abstract class to have abstract methods.
+
+Sealed class:
+   sealed class Vehicle, disallows deriving from this class.
+
+Sealed method:
+    sealed method disallows futher overridding 
+    class base {virtual void show(){}}  class derived { sealed override void show() {} }  class subderived { //cannot overrider show further here}
+    Static classes are implicitly sealed
+
+Extension method:
+    Add a method to an existing Type without modifying the actual type
+    example: public static class StringExtension { public static string NewSting(this string s) { return s; }}
+    Index in list -> List<int> intList = new List<int> {1,2,3,4,5,6}; intList.Where((value,index) => {});
+
+Interface:
+ Its a contract, defines what a class must do, but not how it does it.
+ From C#8 allows default method implementation
+ interface ILogger { void Log(string message); void LogError(string message) { Log(message);  }  } This way in a setup where classes that already inheriting from the interface, adding default implementation to the interface won't break other classes.
+ interface inheritance is idempotent, meaning if the same interface appears more than once in the inheritance chain, compiler treats it as one.
+ A class can inherit from multiple interfaces, but only one class concrete/abstract class
+
+Target typed new expression (available from C# 9)
+Class1 c1 = new (); (equivalent to Class1 c1 = new Class1())
+
+Dependency Inversion Principle: 
+    High level modules should not depend on low level modules, both should depend on abstractions. OrderService -> IQuoteService  <- QuoteService
+
+UML:
+Aggregation
+	Aggregation example: (Here dependency Professor is injected and mapped to a class level field (or property)
+	class Department{
+		private Professor _professor;
+		Department(Professor professor){
+			_professor = professor;
+		}
+	}  
+	Definition: Aggregation a week whole-part("has-a") relationship, UML: ◇—— hollow Diamond Arrow pointed at Depender. Aggregation: Department ◇—— Professor. Why weak when Department disposes still Professor exists
+
+Composition
+	Composition example: (Dependency Professor is created within Depender)
+	Class Department {
+		private Professor _professor;
+		Department(){
+			_professor = new Professor();
+			}
+		}
+	Definition: Composition, a strong whole-part ("owns-a") relationship, Solid Diamond Arrow pointed at Depender Composition: Department ◆—— Professor. Why strong when Department is disposed Professor is disposed as well
+Association
+	Assocation example: (Here dependency Professor is used, but not mapped to any field/property as class level
+	class Department {
+		public void Teach(Professor professor){}
+	}
+	Definition: Association ("uses-a") Professer object, Solid line Arrow Pointed at Dependency. Department ———> Professor.
+Generalization (Inheritance)
+    Generialization example, Maths "is a" Department
+    class Maths: Department {}
+    Definition: Generialization, there exists "is a" relationship between child(Maths) and parent(Department) UML: Maths ─────▷ Department (triange arrow head)
+
+
+
