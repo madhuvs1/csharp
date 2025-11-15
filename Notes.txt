@@ -13,6 +13,7 @@ Asp.net To speed up builds during debug or development, modify the project file 
 Variables:
 Shortcut: Ctrl+D duplicates the line
 Multiline Comment: ctrl+shift+/   (ctrl+k+c to comment and ctrl+k+u to uncomment)
+Format: ctrl+k, ctrl+d
 
 Implicitly typed variable: var 
 
@@ -193,8 +194,14 @@ Explicit Conversion:
     Animal a = new Dog();
     Dog = a; This is downcasting, but not safe what if Animal holds Cat instead of Dog
 
-    Is Operator
-    Animal a = new Dog(); a is Dog ? returns true;
+    "Is" Operator
+        Animal a = new Dog(); a is Dog ? returns true;
+    "Is" Assignment
+        List<Dog> dogs;
+        if(a is Dog x){ dogs.add(x);}  //Here a is Dog does type check followed by variable makes assigment to variable x; 
+    If you wonder why can't I just add dogs.add(a); instead of dogs.add(x) first one does casting to Dog, whereas second doesn't do casting
+    Here does safe type check if(a is Dog x) another alternative way
+        newList.Add((TTarget)Convert.ChangeType(item, typeof(TTarget))); //not type safe
 
     "As" Operator
     Animal a = new Dog();
@@ -230,6 +237,11 @@ Class1 c1 = new (); (equivalent to Class1 c1 = new Class1())
 Dependency Inversion Principle: 
     High level modules should not depend on low level modules, both should depend on abstractions. OrderService -> IQuoteService  <- QuoteService
 
+typeof(Compile time) vs GetType (RunTime on an instance)
+typeof("hello") -> System.String
+person.GetType()
+
+
 UML:
 Aggregation
 	Aggregation example: (Here dependency Professor is injected and mapped to a class level field (or property)
@@ -262,4 +274,200 @@ Generalization (Inheritance)
     Definition: Generialization, there exists "is a" relationship between child(Maths) and parent(Department) UML: Maths ─────▷ Department (triange arrow head)
 
 
+Exception and Error Handling
+3 Types: Compile time errors , RunTime errors and Logical errors
+Exception base class is System.Exception, all other excpetion types derived from System.Exception
+Known exception types: ArgumentException: {ArgumentNullException(eg: input null), ArgumentOutOfRangeException(eg weekday input: 8)}, InvalidOperationException(input collection is empty)
+StackOverflowException:
+    RecursiveMethods:  if there is method calling itself this could be result in StackOverflowException
+throw ex vs throw (throw ex is bad practise)
+a)
+        Method1(){
+            try{
+                Method2();
+            }
+            catch(NullReferenceException ex) {
+                //ex.stacktrace shows Method2 when throw ex was performed in Method1 as it resets the stack trace;
+                //ex.stacktrace shows Method1<-Method2 when throw was performed 
+            }
+        }
+        Method2(){
+            try{
+                throw NullReferenceException("object is null");
+            }
+            catch(NullReferenceException ex){
+                throw;
+                //throw ex; //bad practise as it resets the stack trace
+            }
+        }
+b) Pass ex (original exception) while throwing -> throw new ArgumentNullException("The collection is null", ex);
+ Method1(){
+            try{
+                Method2();
+            }
+            catch(NullReferenceException ex) {
+              //Here ex.Message shows "The collection is null"
+              //ex.StackTrace points to the place where its thrown here its -> throw new ArgumentNullException("The collection is null", ex);
+              //ex.InnerException shows "Object Reference not set.... because while doing throw new, ex is passed as second param.
+              //ex.InnerException.StackTrace points to the root (origin) of exception -> throw NullReferenceException("object is null");
+              
+            }
+        }
+        Method2(){
+            try{
+                throw NullReferenceException("object is null");
+            }
+            catch(NullReferenceException ex){
+                throw new ArgumentNullException("The collection is null", ex);
+            }
+        }
+Exception filter: catch when (ex.Message.StartsWith("400")) {}
+ Catch block condition (when) allows conditionally catching exception
 
+Shortcut:
+ctrl+Shift+Space: shows available overloads for a method/constructor...
+    File.ReadAllLines() (place the cursor inside the parenthesis and press ctrl+shift+space)
+
+CustomException:
+    Derives from Exception class, 
+    [Serializable]  //optional
+    public class CustomException : Exception
+    {
+        public string Data {get;}
+        // 1️⃣ Default (parameterless)
+        public CustomException(): base() { }
+        // 2️⃣ Message-only
+        public CustomException(string message) : base(message) { }
+        // 3️⃣ Message + inner exception 
+        public CustomException(string message, Exception innerException) : base(message, innerException) {  }
+        // 4️⃣ Message + inner exception + Data 
+        public CustomException(string message, Data data, Exception innerException) : base(message, innerException) {this.Data = data; }
+        // 5️⃣ Serialization (for remoting or custom serialization) //optional
+        protected CustomException(System.Runtime.Serialization.SerializationInfo info,
+                                System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+    }
+If your exception may be serialized or re-thrown across application domains or process boundaries,
+then you must include the serialization constructor (the 5th one). Its legacy way not needed
+
+If your code uses reflection, DI frameworks, or rethrow logic that assumes exceptions can be created dynamically, a parameterless constructor helps those frameworks instantiate your exception safely.    
+
+Generic types:
+    IEnumerable<T>
+        ↑
+    ICollection<T> : IEnumerable<T>
+        ↑
+    IList<T> : ICollection<T>, IEnumerable<T>
+        ↑
+    List<T> : IList<T>, ICollection<T>, IEnumerable<T>
+DataStuctures: Are types meant for storing and organizing data so that it can be accessed and modified efficiently.    
+Examples of DataStructures: 
+Linear: Arrays, List, LinkedList, Stacks, Queues
+Non-Linear: Tree, BinaryTree, Graph
+Hash-Based structures: Dictionary, HashSet
+Specialized Structures: PriorityQueue, Tuple/Record
+
+List uses Array under the hood for datastorage. When items added to the list, Array is resized(doubled default is 4, next time it will become 8). 
+And when items are removed, size is not shrinked unless explicitly called list.TrimExcess()
+    Sample: Refer CodeSnippets.txt #CustomGenerics
+
+Simple generic type: refer CodeSnippets #SimpleGenericType
+
+Tuple
+    A lightweight data structure to group multiple data elements into a single object without the need to create custom class or struct
+Implicit named Tuple: example: var person = ("John",20)    // person.Item1 contains John
+Named Tuple: (string name, int age) person = ("John", 20) // person.name contains John
+
+Generic Method:
+Class can be non-generic but its methods can be generic
+Refer: CodeSnippets #GenericMethod   
+
+Type constraint:
+    i) Limits types to be used for Generic type that parameterless constructor
+    IEnumerable<T> RandomCollectionGenerator<T>(int maxLength) where T: new() { // where T:new() ensures T types should be classes only that have parameterless constructor 
+        var randomLength = Random.Next(maxLength+1);
+        var result = new List<T>(randomLength);
+        for(int i=0;i<randomLength;i++){
+            result.Add(new T());
+        }   
+    }
+    ii) Limit specific types for the Generic Type 
+    public class Person{public int Year {get;set;}} public class Employee: Person {}
+    public IEnumerable<T> GetValid<T>(IEnumerable<T> input) where T: Person {
+        List<T> validOnes = new List<T>();
+        foreach(var item in input){
+            if(item.Year > 1900 && item.Year < DateTime.Now.Year)
+                validOnes.Add(item);
+        }
+        return validOnes;
+    }
+
+List creation with size
+    If we know the size, initialise list with size, otherwise list has to resize internal array (4,8,16,32...)
+    new List<int>(size); 
+
+Time Consumption (performance measurement)
+    StopWatch stopWatch = StopWatch.StartNew();
+    MethodCall();
+    stopWatch.Stop();
+    stopWatch.ElapsedMilliseconds // gives the time consumed by method
+
+Invariant: You cannot substitute one generic type argument for another, even if there is inheritance relationship between those types Refer: #Invariant
+
+Covariance is required when a generic interface (or delegate) should allow a derived implementation that uses a derived type argument to be assigned to a base interface reference that uses the base type argument.     
+Refer: #Covariance
+
+Contravariance is the opposite of Covariance. Refer: #Contravariance
+
+IComparable interface lets compare two objects. In this comparison, we compare two objects based on a property
+Refer: #IComparable
+
+Type Constraint - numeric types.
+Use the INumber interface lets perform math operation (square) on generic types
+ public static T Square<T>(T t) where T : INumber<T> => t * t;
+
+Func Action Delegates
+    Func is a generic delegate type that represents a method which returns a value;
+    Action is a built-in delegate type in C# that represents a method that does not return a value
+    Note: Func<int,bool>, you can use Predicate here -> Predicate<int> (it returns bool)
+
+Lambda Expression: Inline anonymous method
+    Anonymous methods: (parameters) => expression
+Expression vs Statement:
+    Expression evaluates to a value x+y 
+    Statement performs an action: Console.WriteLine("HelloWorld"), int x=5, x++;
+
+Delegate: Type whose instances hold a reference to a method(methods), declaration looks similar to method declaration.
+delegate string ProcessString(string input);
+Multicast delegate references multiple methods, via delegate instances in its invocation list.
+refer #delegates
+
+Dictionary: (DataStructure)  Generic Collection of KeyValue pairs (HashTable -Legacy non generic)
+    Allows quick lookup a value based on its key. Keys must be unique.
+How Dictionary achieves quick lookup ?
+    Dictionary internally has buckets of memory, it will store the key in one of the bucket. When you store a key -> gets the hashcode of the key ->
+    say 12345 ->  Assume Dictionary has 5 buckets -> Now bucketIndex = HashCode % No. of buckets -> 1234/5 = 4. It stores the key in bucket 4. During retrieval using the 
+    hashcodeOfkey % NoOfBuckets finds the bucket to find the value.
+ ContainsKey checks whethere the keys exists in the Dictionary
+
+ Strategy Design Pattern- Behavioral pattern(Gof-GangOfFour)
+    The behavior of a class can be decided at runtime when the abstraction it depends on is associated (or injected) with a concrete derived implementation.
+    Its an implementation of Open/Closed Principle in SOLID design principle
+    Refer: #StrategyDesignPattern
+
+Decorator pattern - Behavioral pattern
+    Adds new behavior or features to an existing object without changing its code. Lets say initially you had only EmailNotifier for INotifier, later when you want to extend for SMS
+    and Slack as below, here we decorate/wrap additional objects to achieve it. Idea is each hold reference of predecessor initialized in the constructor. When the send method called 
+    it calls base.Send() first. Refer #Decorator Pattern
+     services.AddTransient<INotifier>(sp =>
+        {
+            INotifier n = new EmailNotifier();
+            n = new SMSNotifier(n);
+            n = new SlackNotifier(n);
+            return n;
+        });
+Class vs Struct
+Class is a reference type.
+Struct is a value type. It can be made immutable public readonly struct Coordinates { int x; int y; }
+Struct when copied it, it copies whole no references. (Struct s1=s2;) Except if you modify a reference type of Struct it gets affected both places. However if the reference type is reinitialized 
+it will affect only on the struct where its done.
+Refer: #ClassVsStruct

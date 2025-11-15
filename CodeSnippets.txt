@@ -1,0 +1,394 @@
+#CustomGenerics
+        public class ListOfInt {
+
+            private int[] _intArray = new int[IntArraySize];
+            public static int IntArraySize { get; set; } = 4;
+            private int _freeIndex = 0;
+
+            public void Add(int x) {
+                if (_freeIndex > IntArraySize - 1)
+                {
+                    var tempArray = new int[IntArraySize * 2];
+                    for (int i = 0; i < IntArraySize; i++)
+                    {
+                        tempArray[i] = _intArray[i];
+                    }
+                    IntArraySize = IntArraySize * 2;
+                    _intArray = tempArray;
+                }
+                _intArray[_freeIndex++] = x;
+            }
+            public void RemoveAt(int x) {
+                if(x >= _freeIndex) throw new ArgumentException(nameof(x));
+                for (int i = x; i < _freeIndex-1; i++) {
+                    _intArray[i] = _intArray[i+1] ;
+                }
+                _freeIndex--;
+            }
+            public int GetAtIndex(int index) {
+                return _intArray[index];
+            }
+        }
+usage: 
+    ListOfInt listOfInt = new ListOfInt();
+    listOfInt.Add(1);
+    listOfInt.Add(2);
+    var intValueAtIndex5 = listOfInt.GetAtIndex(5);
+    listOfInt.RemoveAt(4);        
+
+#SimpleGenericType
+    public class Pair<T> {
+        public T First{get;private set;}
+        public T Second{get; private set;}
+        public Pair(T first, T second){
+            First = first;
+            Second = second;
+        }
+        public void ResetFirst(){
+            First = default(T);
+        }
+        
+        public void ResetSecond(){
+            Second = default(T);
+        }
+    }
+usage: var pair = new Pair<string, string>("hello", "world");            
+
+#GenericMethod
+    public class NonGeneric
+    {
+        public void Add<T>(T obj)
+        {
+            Console.WriteLine(typeof(T));
+        }
+    }
+    public static class ListExtension
+    {
+        public static List<TTarget> ConvertTo<TSource, TTarget>(this List<TSource> input) where TSource : class  where TTarget : class
+        {
+            var newList = new List<TTarget>();
+            foreach (var item in input)
+            {
+                if(item is TTarget target)
+                    newList.Add(target);
+            }
+            return newList;
+        }
+    }
+
+#Tuple
+    public static class TupleSwapExercise
+    {
+        //new way
+        public static (T2, T1) SwapTupleItems1<T1, T2>((T1 param1, T2 param2) item)
+        {
+            return (item.param2, item.param1);
+        }
+        public static (T2, T1) SwapTupleItems2<T1, T2>((T1, T2) item) { 
+            return (item.Item2, item.Item1);
+        }
+        //legacy way
+        public static Tuple<T2, T1> SwapTupleItemsOld<T1, T2>(Tuple<T1, T2> tuple) {
+            return new Tuple<T2,T1>(tuple.Item2, tuple.Item1);
+        }
+    }
+
+#Invariant
+class Person { }
+class Employee : Person { }
+List<Employee> employees = new List<Employee>();
+List<Person> persons = employees; // ❌ Error — List<T> is invariant
+
+
+#Covariance
+    public class Person {}
+    public class Employee: Person {}
+    public interface IDataProvider<out T> { T GetData(); }
+    public class EmployeeDataProvider: IDataProvider<Employee> {
+        public Employee GetData(){}
+    }
+    IDataProvider<Person> person = new EmployeeDataProvider();
+
+#Contravariance
+    public class Person{}
+    public class Employee{}
+    public interface  IDataSaver<in T>{ void Save(T data) }
+    public class PersonDataSaver: IDataSaver<Person>{
+        public void Save(Person data);
+    }
+    IDataSaver<Employee> dataSaver = new PersonDataSaver();
+    dataSaver.Save(new Employee());
+
+#IComparable
+    public class Person: IComparable<Person> { 
+        public int YearOfBirth { get; set; }
+        public string Name { get; set; }
+        public int CompareTo(Person other) {
+            if (this.YearOfBirth < other.YearOfBirth) return -1; //(1940 < 1950)  meaning this.YearOfBirth(1940) stays in front and other.YearOfBirth(1950) moved to last
+            else if(this.YearOfBirth > other.YearOfBirth) return 1; //reverse of above
+            return 0; //no change to the list
+        }
+    }
+    Another usecase to sort names first by lastname and then firstname
+    public class SortedList<T> where T: IComparable<T>
+    {
+        public IEnumerable<T> Items { get; }
+
+        public SortedList(IEnumerable<T> items)
+        {
+            var asList = items.ToList();
+            asList.Sort();
+            Items = asList;
+        }
+    }
+
+    public class FullName: IComparable<FullName>
+    {
+        public string FirstName { get; init; }
+        public string LastName { get; init; }
+
+        public override string ToString() => $"{FirstName} {LastName}";
+
+        public int CompareTo(FullName other)
+        {
+            if (other.LastName == LastName) {
+                return FirstName.CompareTo(other.FirstName);
+            }
+            return LastName.CompareTo(other.LastName);
+        }
+    }
+
+#Func
+//Inline func example
+    Func<string, int> stringLength = x => x.Length;
+    Console.WriteLine(stringLength("HelloWorld"));
+    Func<int, int, int> sumOfTwoNumbers = (x, y) => x + y;
+    Console.WriteLine(sumOfTwoNumbers(1,1));
+//Assign func to an existing method
+    Func<int, int, int> Func1 = Add;
+    public int Add(int a, int b) => a+b;
+//Func as parameter to class you pass implementation to method param
+    FuncClass funcClass = new FuncClass();
+    Console.WriteLine(funcClass.FuncMethod(x => x.Length));
+        public class FuncClass {
+        public int FuncMethod(Func<string, int> func) => func("HelloWorld");
+    }
+//Func as class level fields    
+    public class Exercise
+    {
+        public Func<string, int> GetLength = (x) => x.Length;
+        public Func<int> GetRandomNumberBetween1And10 = () => new Random().Next(2, 10);
+    }
+#delegates
+    public string TrimTo5Letters(string input){return input.Substring(0,5);}
+    public string ToUpper(string input) {return input.ToUpper();}
+    delegate string StringProcessor(string input);
+    StringProcessor stringProcessor1 = TrimTo5Letters;
+    StringProcessor stringProcessor2 = ToUpper;
+    Console.WriteLine(stringProcessor1("HelloWorld"));
+    Console.WriteLine(stringProcessor2("HelloWorld"));
+Multicast delegate:
+    public class DelegateBench {
+        public void TrimTo5Letters(string input) { Console.WriteLine(input.Substring(0, 5)); }
+        public void ToUpper(string input) { Console.WriteLine(input.ToUpper()); }
+        public delegate void StringProcessor(string input);
+
+        public void Test()
+        {
+            StringProcessor stringProcessor1 = TrimTo5Letters;
+            StringProcessor stringProcessor2 = ToUpper;
+            StringProcessor stringProcessor = stringProcessor1 + stringProcessor2;
+            StringProcessor stringProcessor3 = x => Console.WriteLine(x.ToLower());
+            stringProcessor += stringProcessor3;
+            stringProcessor("HelloWorld");
+        }
+    }
+    DelegateBench delegateBench = new DelegateBench();
+    delegateBench.Test();
+
+
+#Dictionary
+    Dicationary<string,string> countriesAndCurrency = new Dictionary<string,string>();
+    countriesAndCurrency["USA]="USD"
+    Initialize Dictionary with multiple key values
+    Dicationary<string,string> countriesAndCurrency = new Dictionary<string,string> {
+        ["USA"] = "USD",
+        ["India"] = "INR"
+        ["Spain"] = "EUR"
+    }
+   
+    public static class Exercise
+    {
+        public static Dictionary<PetType, double> FindMaxWeights(List<Pet> pets)
+        {
+            //using linq groupby return pets.GroupBy(x => x.PetType).ToDictionary(g => g.Key, g => g.Max(p=> p.Weight));
+            Dictionary<PetType, double> petsWithMaxWeight = new Dictionary<PetType, double>();
+            foreach (Pet pet in pets) {
+               var petsByType = pets.FindAll(x => x.PetType == pet.PetType);
+                petsWithMaxWeight[pet.PetType] = petsByType.Max<Pet>(x => x.Weight);  
+            }
+            return petsWithMaxWeight;
+        }
+    }
+
+#StrategyDesignPattern
+    Example1: Strategy pattern using interface
+    public interface IPaymentStrategy { void pay(); }
+    public PayPal: IPaymentStrategy{ public void Pay() {Console.WriteLine("Processing PayPal payment");} }
+    public CreditCard: IPaymentStrategy{ public void Pay() {Console.WriteLine("Processing CreditCard payment");} }
+    public class OrderService {
+        public void ProcessPayment(IPaymentStrategy paymentStrategy){
+            paymentStrategy.Pay();
+        }
+    }
+    Example2: Strategy pattern using Function Delegates
+    public class StrategySelector
+    {
+        public static Predicate<int> SelectStrategy(string userInput)
+        {
+            return userInput switch
+            {
+                "even" => x => x % 2 == 0,
+                "odd" => x => x % 2 == 1,
+                "positive" => x => x > 0,
+                "negative" => x => x < 0,
+                _ => throw new InvalidOperationException("Invalid user choice")
+            };
+        }
+    }
+
+    public class NumbersFilter
+    {
+        public static List<int> Filter(Predicate<int> func, List<int> numbers)
+        {
+            var filteredList = new List<int>();
+            foreach (int i in numbers)
+            {
+                if (func(i)) filteredList.Add(i);
+            }
+            return filteredList;
+        }
+    }
+    var userInput = Console.ReadLine();
+    var strategy = StrategySelector.SelectStrategy(userInput);
+    var numbers = new List<int> { -3, -2, -1, 0, 1, 2, 3, 4, 5, 6 };
+    var filteredNumbers = NumbersFilter.Filter(strategy, numbers);
+    Console.WriteLine(string.Join(",", filteredNumbers));
+
+#Decorator Pattern
+    services.AddTransient<INotifier>(sp =>
+    {
+        INotifier n = new EmailNotifier();
+        n = new SMSNotifier(n);
+        n = new SlackNotifier(n);
+        return n;
+    });
+    public interface INotifier
+    {
+        void Send(string message);
+    }
+    public class EmailNotifier : INotifier
+    {
+        public void Send(string message)
+        {
+            Console.WriteLine($"Email {message}");
+        }
+    }
+
+    public class SmsNotifier : INotifier
+    {
+        private readonly INotifier _notifier;
+        public SmsNotifier(INotifier notifier) { _notifier = notifier; }
+        public void Send(string message)
+        {
+            _notifier.Send(message);
+            Console.WriteLine($"Sms {message}");
+        }
+    }
+
+    public class SlackNotifier : INotifier
+    {
+        private readonly INotifier _notifier;
+        public SlackNotifier(INotifier notifier1) { _notifier = notifier1; }
+        public void Send(string message)
+        {
+            _notifier.Send(message);
+            Console.WriteLine($"Slack {message}");
+        }
+    }
+Client will inject INotifier and called notifier.Send("Hello"); it will send Email,Sms,Slack
+//For console app testing do like below
+    INotifier notifier = new EmailNotifier();
+    notifier = new SmsNotifier(notifier);
+    notifier = new SlackNotifier(notifier);
+    notifier.Send("System alert!");
+Another approach for Decorator pattern using abstract class, only difference is SMS, Slack not required to hold the reference of the base initialized via constructor
+    public interface INotifier
+    {
+        void Send(string message);
+    }
+    public class EmailNotifier : INotifier
+    {
+        public void Send(string message)
+        {
+            Console.WriteLine($"Email {message}");
+        }
+    }
+    public abstract class NotifierDecorator : INotifier
+    {
+        protected readonly INotifier _notifier;
+        public NotifierDecorator(INotifier notifier) { _notifier = notifier; }
+        public void Send(string message)
+        { //dummy
+        }
+    }
+    public class SmsNotifier : NotifierDecorator
+    {
+
+        public SmsNotifier(INotifier notifier) : base(notifier)
+        {
+        }
+        public void Send(string message)
+        {
+            _notifier.Send(message);
+            Console.WriteLine($"Sms {message}");
+        }
+    }
+    public class SlackNotifier : NotifierDecorator
+    {
+
+        public SlackNotifier(INotifier notifier) : base(notifier)
+        {
+        }
+        public void Send(string message)
+        {
+            _notifier.Send(message);
+            Console.WriteLine($"Slack {message}");
+        }
+    }    
+
+#ClassVsStruct
+    var employer1 = new Employer { Name = "Google", Age = 50, Country = new Country { Name = "USA" } };
+    Console.WriteLine(employer1.ToString()); //Name: Google, Age: 50, Country: USA
+    var employer2 = employer1;
+    employer2.Age = 30;  //
+    Console.WriteLine(employer2.ToString()); //Name: Google, Age: 30, Country: USA
+    Console.WriteLine(employer1.ToString()); //Name: Google, Age: 30, Country: USA
+    employer2.Country = new Country { Name = "India" };
+    Console.WriteLine(employer2.ToString()); //Name: Google, Age: 30, Country: India
+    Console.WriteLine(employer1.ToString()); //Name: Google, Age: 30, Country: India
+
+
+
+    var employerStruct1 = new EmployerStruct { Name = "Google", Age = 50, Country = new Country { Name = "USA" } };
+    Console.WriteLine(employerStruct1.ToString()); //Name: Google, Age: 50, Country: USA
+    var employerStruct2 = employerStruct1;
+    employerStruct2.Age = 30;
+    Console.WriteLine(employerStruct2.ToString()); //Name: Google, Age: 30, Country: USA
+    Console.WriteLine(employerStruct1.ToString()); //Name: Google, Age: 50, Country: USA
+    employerStruct2.Country.Name = "India";
+    Console.WriteLine(employerStruct2.ToString()); //Name: Google, Age: 30, Country: India
+    Console.WriteLine(employerStruct1.ToString()); //Name: Google, Age: 50, Country: India
+    employerStruct2.Country = new Country { Name = "Canada" };
+    Console.WriteLine(employerStruct2.ToString()); //Name: Google, Age: 30, Country: Canada
+    Console.WriteLine(employerStruct1.ToString()); //Name: Google, Age: 50, Country: India
