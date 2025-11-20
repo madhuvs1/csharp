@@ -392,3 +392,60 @@ Another approach for Decorator pattern using abstract class, only difference is 
     employerStruct2.Country = new Country { Name = "Canada" };
     Console.WriteLine(employerStruct2.ToString()); //Name: Google, Age: 30, Country: Canada
     Console.WriteLine(employerStruct1.ToString()); //Name: Google, Age: 50, Country: India
+
+#Spread
+Spreading Arrays
+    string[] first = ["A", "B"];
+    string[] second = ["C", "D"];
+    string[] result = [..first, ..second];    // earlier -> first.contact(second).ToArray(); or Array.Copy or add to List -> AddRange
+    // => ["A", "B", "C", "D"]
+Spreading LINQ results
+    List<string> words = ["HELLO", "world", "BYE"];
+    string[] capitals = [.. words.Where(w => w.ToUpper() == w)];
+    // => ["HELLO", "BYE"]
+Spreading with literals
+    int[] baseNumbers = [2, 3];
+    int[] all = [1, ..baseNumbers, 4, 5];
+    // => [1, 2, 3, 4, 5]
+
+
+#OrderBy
+    public static void OrderBy()
+    {
+        var animals = new List<Animal>();
+        animals.Add(new Animal { Type = AnimalType.Dog, Name = "johnny", });
+        animals.Add(new Animal { Type = AnimalType.Cat, Name = "sally", });
+        animals.Add(new Animal { Type = AnimalType.Cat, Name = "Alexa", });
+        animals.Add(new Animal { Type = AnimalType.Dog, Name = "sandra", });
+        animals.Add(new Animal { Type = AnimalType.Bird, Name = "Sunny", });
+        animals.Add(new Animal { Type = AnimalType.Bird, Name = "feebie", });
+        var sortedAnimals = animals.OrderBy(a => a.Type).ThenBy(a => a.Name);
+        Console.WriteLine(string.Join(Environment.NewLine, sortedAnimals.Select(a => new { a.Type, a.Name})));
+    }
+Output: (notice, first sorted by AnimalType and then by Name within that Animal Type)
+    { Type = Dog, Name = johnny }
+    { Type = Dog, Name = sandra }
+    { Type = Cat, Name = Alexa }
+    { Type = Cat, Name = sally }
+    { Type = Bird, Name = feebie }
+    { Type = Bird, Name = Sunny }
+
+#OrderByWithFirst
+    public static string FindShortestWord(List<string> words)
+    {
+        return words.OrderBy(w => w.Length).First();
+    }
+#WhereWithIndex
+    public static void WhereWithIndex()
+    {
+        var animals = new List<Animal>();
+        animals.Add(new Animal { Type = AnimalType.Dog, Name = "johnny", });
+        animals.Add(new Animal { Type = AnimalType.Cat, Name = "sally", });
+        animals.Add(new Animal { Type = AnimalType.Cat, Name = "Alexa", });
+        animals.Add(new Animal { Type = AnimalType.Dog, Name = "sandra", });
+        animals.Add(new Animal { Type = AnimalType.Bird, Name = "Sunny", });
+        animals.Add(new Animal { Type = AnimalType.Bird, Name = "feebie", });
+        var evenAnimals = animals.Where((a, index) => index % 2 == 0);
+        Console.WriteLine(string.Join(Environment.NewLine, evenAnimals.Select(a => new { a.Type, a.Name })));
+    }
+

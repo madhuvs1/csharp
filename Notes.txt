@@ -465,9 +465,64 @@ Decorator pattern - Behavioral pattern
             n = new SlackNotifier(n);
             return n;
         });
+
 Class vs Struct
-Class is a reference type.
-Struct is a value type. It can be made immutable public readonly struct Coordinates { int x; int y; }
-Struct when copied it, it copies whole no references. (Struct s1=s2;) Except if you modify a reference type of Struct it gets affected both places. However if the reference type is reinitialized 
-it will affect only on the struct where its done.
-Refer: #ClassVsStruct
+    Class is a reference type.
+    Struct is a value type. It can be made immutable public readonly struct Coordinates { int x; int y; }
+    Struct when copied it, it copies whole no references. (Struct s1=s2;) Except if you modify a reference type of Struct it gets affected both places. However if the reference type is reinitialized 
+    it will affect only on the struct where its done.
+    Refer: #ClassVsStruct
+
+LINQ: (Language Integrated Query)  - Allows simple and efficient querying over different kinds of data.
+    It allows filtering, ordering and transforming the collection elements
+Spread/Collection Operator: Creates an immutable fixed array/list based on inferred type. Its used in a Collection expression ([...]) to expand(spread) the elements of another collection
+into the new one.
+example:  
+          old approach: return words.Where(word => word.ToUpper() == word).ToList(); //slight performance overhead as it doesn't create a fixed immutable collection  
+          return [.. words.Where(word => word.ToUpper() == word)]; //returns List<string> if the method return type is list<string>
+          return [.. words.Where(word => word.ToUpper() == word)]; //returns string[] if the method return type is string[]
+          var capitalizedWords =  [.. words.Where(word => word.ToUpper() == word)]; //NOT ALLOWED, as the expression doesn't what target type to infer
+          string[] capitalizedWords =  [.. words.Where(word => word.ToUpper() == word)]; //Allowed as Target Type string[] is explicitly stated
+Refer: #Spread          
+
+All Operator
+    words.where(word => word.All(l => char.IsUpper(l)));
+Any operator -> Checks if any of the item in the collection matches the condition 
+All Operator -> checks all the items in the collection matches the condition
+Count Operator -> Counts the items matching the condtion. pets.Count(pet => pet.Type == PetType.Dog);
+LongCount -> Used when the output count (long) is larger then Count ouput (int)
+Contains -> Checks if an item is present in the collection. var numbers = new[] {1,2,3,4}; numbers.Contains(4);
+OrderBy (ThenBy) -> OrderBy orders elements in the collection by a Key also allows further ordering using ThenBy refer: #OrderBy
+First -> Returns the first element in the list (uses predicate when supplied) numbers.First(number => number%2==0);
+refer: #OrderByWithFirst
+FirstOrDefault -> If there is not first item returns the default value of the type.
+Last -> Returns the last element in the list (uses predicate when supplied)
+LastOrDefault -> If there is not last item returns the default value of the type.
+Where -> Applies filter on a collection, numbers.Where(number => number%2);
+Where-With-Index -> Along with predicate you can supply index position in the collection eg) animals.Where((a, index) => index % 2 == 0); 
+Refer: #WhereWithIndex
+Distinct -> Gets the unique elements in the collection
+Select -> Takes the input sequence and projects(maps) into a Different Anonymous Type or get a Subset of properties, animal.Select(a => new {a.Type}); animals.Select((a, index) => new { index, a.Type });
+
+
+char.IsWhiteSpace checks for " ", "\n", "\t", Its unicode aware correctly checks for whitespace from other languages
+
+Method syntax vs Query syntax
+    Method syntax: var evenNumbers = numbers.Where(n => n%2 == 0);
+    Query syntax: var evenNumbers = from number in numbers where number%2 == 0 select number;
+
+Lazy vs Eager evaluation
+public IEnumerable<string> GetWordsGreaterThanLengthTwo() =>
+    return words.where(word => word.Length > 2); --> Lazy evaluation, returns an Iterator object(IEnumerable<string>) that performs filtering only caller enumerate it(foreach) Deferred execution.
+    return [.. words.where(word => word.Length > 2)]; --> Eager evaluation filtering is done before returned
+    return words.where(word => word.Length > 2).ToList(); Eager evaluation as well
+
+Linq Method chaining
+    numbers.Where(number => number%2 == 0).OrderBy(number => number);
+
+Most of the Collections implement IEnumerable, thus LINQ querying possible on them
+
+
+
+
+
