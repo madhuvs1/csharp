@@ -180,6 +180,8 @@ Constructor:
 
 Explicit Conversion:
     decimal (0.01m) and double are floating point types. decimal has more precision (used in banks) double has less precision (used in scientific calculation)
+    decimal is 128bit and double is 64bit
+    decimal uses base10 wheras double uses binary. What does it mean 0.1+ 0.2 in double leads to 0.30000000000000004 whereas in decimal it gives 0.3 (precision)
     double is faster as its a native type to CPU, decimal is a software emulated type.
     implicit conversion int x = 2; decimal d = x; 
     decimal d = 0.01m; int x = d; (not possible as there is a loss), so we do => int x = (int)d;
@@ -441,6 +443,13 @@ delegate string ProcessString(string input);
 Multicast delegate references multiple methods, via delegate instances in its invocation list.
 refer #delegates
 
+event: 
+Event facilitates publisher subscriber pattern. Say you have a TravelVideosChannel and subscribers subscribed to it. When a new video is published 
+they will be informed(event published). 
+refer: #event
+
+
+
 Dictionary: (DataStructure)  Generic Collection of KeyValue pairs (HashTable -Legacy non generic)
     Allows quick lookup a value based on its key. Keys must be unique.
 How Dictionary achieves quick lookup ?
@@ -485,11 +494,11 @@ example:
           string[] capitalizedWords =  [.. words.Where(word => word.ToUpper() == word)]; //Allowed as Target Type string[] is explicitly stated
 Refer: #Spread          
 
-All Operator
-    words.where(word => word.All(l => char.IsUpper(l)));
-Any operator -> Checks if any of the item in the collection matches the condition 
-All Operator -> checks all the items in the collection matches the condition
-Count Operator -> Counts the items matching the condtion. pets.Count(pet => pet.Type == PetType.Dog);
+LINQ Methods
+All ->  words.where(word => word.All(l => char.IsUpper(l)));
+Any -> Checks if any of the item in the collection matches the condition 
+All -> checks all the items in the collection matches the condition
+Count -> Counts the items matching the condtion. pets.Count(pet => pet.Type == PetType.Dog);
 LongCount -> Used when the output count (long) is larger then Count ouput (int)
 Contains -> Checks if an item is present in the collection. var numbers = new[] {1,2,3,4}; numbers.Contains(4);
 OrderBy (ThenBy) -> OrderBy orders elements in the collection by a Key also allows further ordering using ThenBy refer: #OrderBy
@@ -523,6 +532,327 @@ Linq Method chaining
 Most of the Collections implement IEnumerable, thus LINQ querying possible on them
 
 
+.Net under the hood: (C# is a plane, .Net is the airport)
+.Net compatible programming languages
+F#- Functional programming language developed by Microsoft
+IronPython - .Net compatible version of Python
+Visual Basic
+
+.Net frameworks
+Windows Forms, Windows Presentation Foundation (WPF), ASP.Net MVC, .Net MAUI (Mobile apps)
+
+.Net Framework released in 2002
+.Net Core released in 2016
+.Net Core 5.0 released in 2020 -> Referred as .Net 5
+
+Intermediate Lanaguage (CIL)
+When the code is compiled, Roslyn compiler compiles to IL code
+JIT (Just in Time compiler) further compiles to Binary code specific to the machine
+
+CLR (Common Language Runtime)
+    Runtime environment that manages the execution of .Net apps. Note: Manages only the Managed Code (Not COM apps)
+        Application <-> CLR <-> Operating System
+Reponsibilities: Just-In-Time Compilation, Memory Management, Error Handling, Thread Management
+
+Stack vs Heap
+Stack is used for Value Types is created per Thread (Size around 4MB), gets automatically removed when not in scope.
+Heap is used for Reference Types is created per App (Size: large), gets cleaned by Garbage Collector
+
+DateTime is a struct value type, internally its just a 64 bit long variable that gets to transformed to DateTime struct.
+
+Best Practices: 
+Never modify the input object of a method parameter  PrintPerson(Person person) { person.name = "john"; } // don't do that. To stop this you can make the properties immutable(init) public class Person { public string Name {get;init;} }
+
+ref modifier: (argument passed to method by reference)
+    Method parameter with ref modifier, changes to it within in the method, will be available(reflected) to the caller as well
+    var y = AddNumber(5); now y holds 6 public void AddNumber(int x) => ++x;
+out modifier: Method with out param, needs to be set value inside the method 
+public void Add(out int x) => x=1;  when method Add called x may or may not be initialized, but the method that holds out on the argument should set some value.
+
+Reference Type:
+    var list = new List<int> {1,3,4,5}; AddOneToList(list); Now the list holds 1,3,4,5,6
+    void AddOneToList(List<int> list){ list.Add(6); }
+Important note that,
+    var list = new List<int> {1,3,4,5}; AddOneToList(list); Now the list still holds 1,3,4,5  it didn't become null because variable list previously pointed to an Address, not its just got set to null.
+    void AddOneToList(List<int> list){ list = null; }
+
+Boxing Unboxing
+Boxing(value->reference implicit): Boxing is the process of boxing an value type as object type in Heap, below when you assign valueType x to object obj a reference type, it creates a object that will hold the value type value implicitly
+In another words, Boxing is implicit mechanism of assinging value type to reference type
+    int x = 5;
+    object obj = x;
+Unboxing(reference->value explicit): Converting the Value type to Reference type
+Object obj = 1;
+int x = (int)obj;
+
+Boxing is expensive as you box the value type it holds more memory
+List<int> list = new List<int> {1,2,3,4,5};
+ArrayList list = new ArrayList {1,2,3,4,5 }; //expensive as the ArrayList holds int as objects
+
+Garbage Collector:
+    Heap memory management mechanism is called the Garbage Collector (GC), its part of CLR. It helps in removing unused objects from memory.
+    Runs on a background thread.
+Trigger:
+    When Operating System(OS) signals CLR that is has little free memory left.
+    When the amount of memory occupied by objects in the heap surpasses a given threshold.
+    When you call GC.Collect() method.
+Memory Defragmentation: Process of moving objects in memory to create a bigger block of free memory.
+
+How GC removes objects from Memory ? It uses Mark-and-Sweep algorithm
+Garbage Collector builds a graph from the root of the object, if an object doesn't have reference its skipped in the graph, means the objects not part of the graph can be removed from memory.
+
+Garbage Collector Responsibilities:
+Identify objects that are no longer needed
+Removing those objects from memory
+Defragmenting the memory
+
+Generation of objects:
+Garbage Collector divides objects into 3 generations 0,1 and 2 (0-short lived, 2-long lived). An object from generation 0 that survived the collection(during garbage collection object still has reference and used)
+then the object gets promoted to generation 1, after that to generation 2. Garbage collect doesn't check generation 2 objects often assuming they survived(had reference and in use) in multiple rounds 
+so its likely still in use.
+
+Memory leaks: A situation when some piece of memory is not being cleaned up, even if the object is no longer in use.
+Garbage Collector does not give us 100% protection from memory leaks.
+One of the most common sources of memory leaks in .NET is related to events.
+Other reason is static fields.
+    Static fields act like global variables.
+    As long as the application lives, the GC considers static references alive, so their objects are never collected.
+    If those objects reference large graphs (collections, event handlers, etc.), memory stays allocated indefinitely.
+    refer: #StaticMemoryLeak
+
+Finalizers (destructors)
+    Finalizers are called when the Garbage Collector decides to collect the objects
+    public class Person {
+        public void Dispose()
+        {
+            if (!disposed)
+            {
+                //Connections.Close();
+                disposed = true;
+                GC.SuppressFinalize(this); 
+            }
+        }
+        ~Person(){
+        //do something
+        }
+    }
+    GC.Collect() is calling to explicitly trigger Garbage collection.
+    GC.SuppressFinalize is called to cancel Garbage collection.
+
+Dispose:
+    Dispose releases unmanaged resources and performs cleanup for managed resources that need explicit cleanup (such as closing streams, flushing buffers, or releasing handles).(managed resources: managed by CLR, unmanaged resources: database connections, file handlers, open network connections)
+
+StreamWriter:
+ Creates and writes data to file. Note writes are buffered as in the option1 meaning file created but the data line1, line2 not written it waits for command streamWriter.Flush() to get it written to file. 
+ Option2 is recommended as it does the flush of data and object disposal(streamWriter.Dispose()) as well. Internally Close calls Dispose Close() → Dispose() → Flush() + release stream
+Refer: #StreamWriter
 
 
+IDisposable allows a class to deterministically release unmanaged resources and to clean up managed resources that require explicit cleanup (such as flushing buffers or disposing streams).”
+using(var fileWriter = new FileWriter()) -> using to cleanup managed resource allowed only when the object implement IDisposable interface
+    public class FileWriter: IDisposable
+    {
+        private StreamWriter _streamWriter;
+        public void Write(string message)
+        {
+            _streamWriter.WriteLine(message);
+        }
+
+        public void Dispose() { 
+            _streamWriter.Dispose();
+        }
+    }
+
+Advanced C# types
+Reflection: Runtime inspection enables metadata access(class properties, constructors, access modifiers) and allows method invocation. Here from obj (of Human class) we are getting the properties
+    Object obj = new Human("John", 25);
+    Type type = obj.GetType();
+    var properties =  type.GetProperties().Where(prop => prop.Name != "EqualityContract");
+    var values = properties.Select(prop => new { prop.Name, Value = prop.GetValue(obj)?.ToString() }); 
+    
+    Output: Error: Animal1 ph has an invalid length of 2
+
+Attributes can additional meta data to existing class. Attribute constructor allows only simple types, bool, string or numeric types, enums (eg. List<string> not allowed)
+Refer: #Attributes
+     
+Struct: (struct -> System.ValueType -> System.object)
+Struct is a value type. It follows value semantics meaning the value of a variable is modified only through the variable itself, example below.
+    struct Point
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public string Name { get; set; }
+        public Point() { }
+        public Point(int x, int y, string name)
+        {
+            X = x;
+            Y = y;
+            Name = name;
+        }
+        public override string ToString() => $"x:{X} y:{Y} name:{Name}";
+    }
+
+var point1 = new Point(1, 2, "Sunny");
+var point2 = point1;
+point2.Name = "Phoebe";
+Console.WriteLine(point1.ToString());  //x:1 y:2 name:Sunny
+Console.WriteLine(point2.ToString());  //x:1 y:2 name:Phoebe
+
+Structs vs classes
+Structs are not nullable as Classes are, 
+    Struct Person {} -> Person person = null; //not  allowed
+    class Person {} -> Person person = null; //allowed
+Structs are sealed, meaning it cannot be derived, but it can derive from an interface. struct Person : IComparable<Person>
+Structs allow to create instance even when there is no Parameterless constructor. struct Point { public Point(int x, int y) {}  } you can still call Point point = new Point(); (which couldn't be done in a class)
+Structs cannot have finalizers. Reason say DbConnectionStruct: IDisposable { private IDbConnection _dbConnection;  ~DbConnectionStruct() {  Dispose();} public void Dispose() {_dbConnection.close(); }  } Now just imaging the DbConnectionStruct is passed as param to a method, then a different copy 
+is passed to method when the method completes struct is diposed and the _dbConnection is gone, and the calling method if it tries to make db task it would fail as its already closed.
+Struct cannot have cycle. Struct Point { public Point Point1 {get;} } since stack is small size, if its allowed it can grow large hence not allowed.
+
+When to use Struct instead of Class
+If there is a need for ValueType semantics store coordinates.
+Equality checking, struct Point {int x; int y;} Point p1 =new Point(1,2); Point p2 = new Point(2,1); if you check p1==p2 it checks the values of the property (not the case in class as it compares references)
+
+struct should be immutable as its a value type, when you copy it to another variable for example, modifying the copied to variable doesn't change the original variable. so Struct properties be Name {get; init;}
+
+with expression, allows produces a new struct allowing to modify properties, with can also be used for record and anonymous types but not for classes
+Point p1 = new Point(1,2); -> Point p2 = p1 with {x=2}; (note: properties should have either init or set accessor)
+
+Explicitly making struct immutable (so someone doesn't accidentally use set on property instead of init or get only)
+readonly struct Point { public int X {get; set;}  } here with set accessor it will fail its readonly
+
+object.ReferenceEquals() checks if two object holds same references you can do p1 == p2 if the object doesn't have operator overloading
+Operator overloading 
+    public static bool operator ==(Person a, Person b)
+    {     return a?.Name == b?.Name;   }
+
+Equals checks values for ValueTypes (struct)    
+Equals checks references are equal for Reference types
+
+Overriding Equals in Class
+    public override bool Equals(object? obj){
+        return (obj is Person other && Id == other.Id);   //here if the obj is Person it gets typecasted to other variable
+    }
+
+Overriding Equals in Struct (By default Equals compares all values, we override it as Struct Equals compares all values by using Reflection causing performance issue, we can override to compare specific values)
+    public override Equals(object? obj){
+        return obj is Point other && X == other.X;
+    }
+
+But notice above method Object involves Boxing/Unboxing since Struct is value type. To avoid this, you can use below and implement IEquatable<Point>
+    public bool Equals(Point point){
+        return X == point.X;
+    }
+Note: Contains method used IEquatable interface    
+Refer: #Equals    
+
+Implicit and Explicit Conversion operator
+int i = 100; decimal d = i; (here implicit conversion involved)
+but if you do decimal d = 25.12m; int i= (int)d; (explicit conversion involved with possible data loss)
+
+Lets say you have a Struct with x, y properties, Pointer pointer = (5,6); (assigning a tuple to pointer) its possible only when you define the implicit operator 
+Refer: #implicitoperator
+
+Hash function: One way cryptographic functions that maps an input of any size to an output of fixed length of bits.
+Two different objects ideally should have different hash codes, but duplicates may happen (hashcode conflict)
+Dictionary uses hashcode of the reference(address) for the Key, so below is not duplicate.
+    Dictionary<Person, string> dictionary = new Dictionary<Person, string>();
+    dictionary.Add(new Person { Name = "Sunny", YearOfBirth = 1990 }, "Sunny");
+    dictionary.Add(new Person { Name = "Sunny", YearOfBirth = 1990 }, "Sunny");
+
+Say you have implemented IEquatable interface with Equals and GetHashCode Refer: #CustomHash
+Note: what properties used in Equals (say you have x,y) and in equals only x used for equality check, ensure same is used in GetHashCode
+example: public override bool Equals(Person person) => Id == person.Id;
+         public override int GetHashCode() => Id; 
+example: public override bool Equals(Person person) => Id == person.Id && Age == person.Age;
+         public override int GetHashCode() => HashCode.Combine(Id, Age);
+
+This will throw duplicate key exception now 
+    Dictionary<Person, string> dictionary = new Dictionary<Person, string>();
+    dictionary.Add(new Person { Name = "Sunny", YearOfBirth = 1990 }, "Sunny");
+    dictionary.Add(new Person { Name = "Sunny", YearOfBirth = 1990 }, "Sunny");
+
+But it behaves different with struct
+var dictionary = new Dicationary<Point, int>(); //Point is a struct
+var point1 = new Point(1,2);
+dictionary[point1] = 3;
+var point2 = new Point(1,2);
+Console.WriteLine(dictionary[point2]); //ouput: 3 Note point2 is not added to dictionary, but dictionary returns 3 because in Struct by default the values are checked for equality whereas in 
+class by default reference address is checked.
+
+Note: Dictionary keys should be immutable 
+Person p1 = new Person("john");
+Say Dictionary[p1] = 25; later if you set p1.name="johnny" and then try to get value Dictionary[p1] would fail, because original when Dictionary generated Key for Person p1 it got hashcode for value "john" 
+now its changed
+
+ValueTuple:
+Below is a reference type tuple stored in heap NOT recommended
+    var tuple1 = Tuple.Create("Sunny", true);  or new Tuple<string, bool>("Sunny", true);
+Modern ValueType Tuple (struct) stored in Stack is recommended
+    var tuple1 = ("Sunny", true);
+Reference Type Tuple can contain max 8 items (8th element is another Tuple)
+ValueType Tuple has no limitation
+By Default objects 
+    p1 == p2 returns false as it checks reference equality
+    p1.equals(p2) returns false as well it checks reference equality
+    var p1 = new Person { Name = "Sunny" };
+    var p2 = new Person { Name = "Sunny" };
+
+In case of ValueTypes it behaves different
+    var p1 = new Point { X = 1, Y = 2 };
+    var p2 = new Point { X = 1, Y = 2 };
+    p1 == p2; compiler error as == operator is not available by default
+    p.Equals(p2) as it checks for values equality 
+
+Tuple behaves same as ValueTypes except that it supports == operator by default (not the case in ValueType)
+    var t1 = Tuple.Create("Sunny", true);
+    var t2 = Tuple.Create("Sunny", true);
+    t1.Equals(t2) -> true
+    t1 == t2 -> false 
+ValueTuple, note both Equals and == operator returns as ValueTuples are checked for equality by values.
+    var t1 = ("Sunny", true);  
+    var t2 = (Name: "Sunny", Flag: true);
+    var (Name, Flag) = ("Sunny",true);
+    t1.Equals(t2);  // true
+    t1 == t2;       // true
+Note ReferenceType Tuples are immutable, its items cannot be modified. But ValueType Tuples are not immutable
+
+PureFunctions don't alter the input parameters eg. int Sum(IEnumerable<int> numbers) IEnumerable is immutable type
+Immutable types and pure functions are tenets of functional programming. 
+Dictionary Keys should be immutable types
+
+Records 
+Creates a immutable type with less code and by defaults provides equals, == , GetHashCode, ToString(), and record doesn't use Reflection to achieve this.
+Record is a reference type with value based equality and hashcode calculation
+Supports inheritance
+Below declaration is called Positional Record (without body), and properties can be set only during declartion 
+    public record WeatherData1(decimal Temperature, int Humidity); Note: parameter Names are capitalized as they are the public properties, Properties are immutable (internally it has get;init;)
+Non-Positional Record you define body as well and you need to explicitly define constructor and properties. (equals, == GetHashCode are generated by default for the Non-Positional Record)
+    public record WeatherData {
+        public decimal Temperature {get;}
+        public int Humidity {get;}
+        public WeatherData(decimal temperature, int humidity){
+            Temperature = temperature;
+            Humidity = humidity;
+        }
+    }    
+refer #Record
+
+Record Structs
+Record Structs are value types and mutable (whereas Records are immutable and reference types)
+public record struct Rectangle(int A, int B);
+To make it immutable add readonly -> public readonly record struct Rectangle(int A, int B);
+
+Nullable value types
+    Allow represent null value for value types
+    int? height = null; (equivalent to Nullable<int> height = null). 
+    example scenario, say you have list of height for people but unsure of heights of certain people, List<int?> heights = new (); heights.AddRange(165,null,125,140); 
+    Console.WriteLine(heights.Where(h => h != null).Average());
+
+Nullable reference types
+Nullable reference types are a C# compiler feature introduced in C# 8.0 to help prevent NullReferenceException at compile time.
+#nullable enable
+    string name = null;    // ❌ Warning — non-nullable cannot be null
+    string? middle = null; // ✔ OK — nullable
+    name?.Length -> returns null when name is null  (Null conditional operator)
+    name!.Length -> dangerous null ignore (Null forgiving operator)
 

@@ -206,6 +206,59 @@ Multicast delegate:
     DelegateBench delegateBench = new DelegateBench();
     delegateBench.Test();
 
+#event
+    public class TravelVideos
+    {
+        // Event to notify when a new video is uploaded
+        public event Action<string> VideoUploaded;
+
+        // Called when a new video is added
+        public void UploadVideo(string videoTitle)
+        {
+            Console.WriteLine($"[Publisher] Uploading new travel video: {videoTitle}");
+
+            // Notify all subscribers safely
+            VideoUploaded?.Invoke(videoTitle);
+        }
+    }
+
+    public class EmailService
+    {
+        private string _subscriberEmail;
+        public EmailService(string subscriberEmail)
+        {
+            _subscriberEmail = subscriberEmail;
+        }
+        public void SendEmailNotification(string videoTitle) =>
+           Console.WriteLine($"[Email] Sent to {_subscriberEmail}: New video → {videoTitle}");
+    }
+
+
+startup.cs
+    var travelVideos = new TravelVideos();
+
+    // 3 subscribers, each with different email addresses
+    var subscriber1 = new EmailService("alice@example.com");
+    var subscriber2 = new EmailService("bob@example.com");
+    var subscriber3 = new EmailService("charlie@example.com");
+
+    // All three subscribe to the event
+    travelVideos.VideoUploaded += subscriber1.SendEmailNotification;
+    travelVideos.VideoUploaded += subscriber2.SendEmailNotification;
+    travelVideos.VideoUploaded += subscriber3.SendEmailNotification;
+
+Event Trigger when the video upload event occurs
+    travelVideos.UploadVideo("Switzerland Skiing");
+
+Output: 
+    [Publisher] New travel video uploaded: Switzerland Skiing
+    [Email] Sent to alice@example.com: New video → Switzerland Skiing
+    [Email] Sent to bob@example.com: New video → Switzerland Skiing
+    [Email] Sent to charlie@example.com: New video → Switzerland Skiing
+
+
+
+
 
 #Dictionary
     Dicationary<string,string> countriesAndCurrency = new Dictionary<string,string>();
@@ -449,3 +502,171 @@ Output: (notice, first sorted by AnimalType and then by Name within that Animal 
         Console.WriteLine(string.Join(Environment.NewLine, evenAnimals.Select(a => new { a.Type, a.Name })));
     }
 
+#StaticMemoryLeak
+    public class CacheLeak
+    {
+        // Static list lives for the entire program
+        private static List<byte[]> _cache = new List<byte[]>();
+
+        public void AddData()
+        {
+            // 10 MB block added on every call
+            _cache.Add(new byte[10 * 1024 * 1024]);
+        }
+    }
+Why this leaks:
+_cache is static → it is never collected.
+Every call to AddData adds another 10 MB chunk.
+Even if the calling objects go out of scope, _cache still holds references, preventing GC from freeing the memory.
+
+#StreamWriter
+    Option1:
+        StreamWriter streamWriter = new StreamWriter(@"c:\test\log.txt");
+        streamWriter.WriteLine("line1");
+        streamWriter.WriteLine("line2");
+        streamWriter.Flush();
+    Option2:
+        using (StreamWriter streamWriter = new StreamWriter(@"c:\test\log.txt"))
+        {
+            streamWriter.WriteLine("line1");
+            streamWriter.WriteLine("line2");
+        }
+
+        public override void Close()
+        {
+            Dispose(true);
+        }
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                Flush();   // flush buffer
+
+            // Release base stream (FileStream)
+            base.Dispose(disposing);
+        }
+
+
+#Attributes
+    var animal1 = new Animal1("Sunny",2);
+    var animal2 = new Animal1("ph", 2);
+
+    ObjectNameLengthValidator objectNameLengthValidator = new ObjectNameLengthValidator();
+    objectNameLengthValidator.Validate(animal1);
+    objectNameLengthValidator.Validate(animal2);
+    public class Animal1
+    {
+        public int Age { get; }
+
+        [StringLength(5, 10)]
+        public string Name { get;}
+
+        public Animal1(string name, int age)
+        {   
+            this.Age = age;
+            this.Name = name;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]  //Allows attributes to be used only on properties
+    public class  StringLengthAttribute: Attribute
+    {
+        public int Max { get; }
+        public int Min { get; }
+
+        public StringLengthAttribute(int min, int max) {
+            this.Min = min;
+            this.Max = max;
+        }
+    }
+    public class ObjectNameLengthValidator {
+        public void Validate(object obj) {
+            var stringLengthAttributedProperties = obj.GetType().GetProperties().Where(p => Attribute.IsDefined(p, typeof(StringLengthAttribute)));
+            foreach (var property in stringLengthAttributedProperties) {
+                var attribute = property.GetCustomAttributes(typeof(StringLengthAttribute), true).FirstOrDefault() as StringLengthAttribute;
+                var stringValue = property.GetValue(obj) as string;
+                if(stringValue.Length < attribute.Min || stringValue.Length > attribute.Max) {
+                    Console.WriteLine($"Error: {obj.GetType().Name} {property.GetValue(obj)} has an invalid length of {stringValue.Length}");
+                }
+                
+            }
+
+        }
+    }
+
+#Equals
+public struct Cartesian : IEquatable<Cartesian>
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+
+    public Cartesian(int x, int y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    public override bool Equals(object? obj) => obj is Cartesian other && X == other.X && Y == other.Y; //this is used when the object is passed as a parameter
+    public bool Equals(Cartesian other) => X == other.X && Y == other.Y; //used when cartesian1.Equals(cartesian2)
+    public static bool operator ==(Cartesian left, Cartesian right) => left.Equals(right);  //used when cartesian1 == cartesian2
+    public static bool operator !=(Cartesian left, Cartesian right) => !left.Equals(right); //used when cartesian1 != cartesian2
+    public static Cartesian operator +(Cartesian left, Cartesian right) => new Cartesian(left.X + right.X, left.Y + right.Y); //add two cartesian and return new cartesian
+    public override int GetHashCode() => HashCode.Combine(X, Y); // This is required when we override Equals
+}
+
+#implicitoperator
+Pointer pointer = (2, 5);
+public struct Pointer
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public Pointer(int x, int y)
+    {
+        X = x;
+        Y = y;
+    }
+    public static implicit operator Pointer((int x, int y) point) => new Pointer(point.x, point.y);
+    //if explicit used then Pointer pointer = (Pointer)(2,5); should be the syntax
+}
+
+#CustomHash
+    public class Person : IEquatable<Person>
+    {
+        public int YearOfBirth { get; set; }
+        public string Name { get; set; }
+
+        public bool Equals(Person? other)
+        {
+            return other.Name == this.Name && other.YearOfBirth == this.YearOfBirth;
+        }
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as Person);
+        }
+        public override int GetHashCode() => HashCode.Combine(Name, YearOfBirth);
+    }
+
+#Record
+    public record WeatherData1(decimal Temperature, int Humidity);
+    //if not record you will endup writing as below
+     public class WeatherData: IEquatable<WeatherData>
+        {
+            public decimal Temperature { get; set; }
+            public int Humidity { get; set; }
+            public WeatherData(decimal temperature, int humidity)
+            {
+                Temperature = temperature;
+                Humidity = humidity;
+            }
+            public override string ToString() => $"Temperature: {Temperature} Humidity: {Humidity}";
+
+            public override bool Equals(object? obj) => Equals(obj as WeatherData); 
+            public bool Equals(WeatherData other) => Temperature == other.Temperature && Humidity == other.Humidity;
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(Temperature, Humidity);
+            }
+            public static bool operator ==(WeatherData left, WeatherData right) => EqualityComparer<WeatherData>.Default.Equals(left, right);
+
+            public static bool operator !=(WeatherData left, WeatherData right) => !(left == right);
+        }
