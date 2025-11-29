@@ -101,6 +101,86 @@ List<Person> persons = employees; // ❌ Error — List<T> is invariant
 
 
 #Covariance
+Detailed example:
+Scenario, you need to get list of Animals from shelter and print them. As you see a generic provider (IAnimalProvider) has ability to get all types of animals. For an interface to 
+achieve this that can take parent type(animal) and allow its derived types you have to define a Generic Interface using out keyword (generic modifier) AND method should not take 
+generic parameter T as input, rather it should only return T (producer not consumer)
+public static class AnimalChecker
+{
+    public static void PrintAnimals(IAnimalProvider<Animal> provider)
+    {
+        while (true)
+        {
+            var animal = provider.GetNext();
+            if (animal == null) return;
+            Console.WriteLine(animal.Name);
+        }
+    }
+}
+Lets create the Interface with out generic modifier
+public interface IAnimalProvider<out T> {
+	public T GetNext(); //Note here T is returned not consumed that's a rule for Covariance
+}
+
+Now define templates for Animal and its derived ones Dog and Cat
+	public class Animal
+	{
+		public string Name { get; set; }
+		public virtual void Sound() { Console.WriteLine("Animal Sound"); }
+	}
+	public class Dog : Animal
+	{
+		public override void Sound() { Console.WriteLine("Bow Bow"); }
+	}
+	public class Cat : Animal
+	{
+		public override void Sound() { Console.WriteLine("Meow Meow"); }
+	}
+
+Now to satisfy PrintAnimals lets make derive from Covariant Generic interface
+	public class DogProvider : IAnimalProvider<Dog>
+	{
+		private readonly Queue<Dog> _dogs = new Queue<Dog>();
+		public DogProvider()
+		{
+			_dogs.Enqueue(new Dog { Name = "Rex" });
+
+			_dogs.Enqueue(new Dog { Name = "Buddy" });
+
+		}
+		public Dog GetNext()
+		{
+			return _dogs.Count > 0 ? _dogs.Dequeue() : null;
+		}
+	}
+One more for Cat lets make derive from Covariant Generic interface
+	public class CatProvider : IAnimalProvider<Cat>
+	{
+		private readonly Queue<Cat> _cats = new Queue<Cat>();
+		public CatProvider()
+		{
+			_cats.Enqueue(new Cat { Name = "Lexie" });
+
+			_cats.Enqueue(new Cat { Name = "Scarlet" });
+
+		}
+
+		public Cat GetNext()
+		{
+			return _cats.Count > 0 ? _cats.Dequeue() : null;
+		}
+	}
+
+With this setup, different providers holding subtypes(dog, cat) can be substitued for Animal generic parameter
+	AnimalChecker.PrintAnimals(new DogProvider());
+	AnimalChecker.PrintAnimals(new CatProvider());
+output: 	
+	Rex
+	Buddy
+	Lexie
+	Scarlet
+
+--------
     public class Person {}
     public class Employee: Person {}
     public interface IDataProvider<out T> { T GetData(); }
@@ -670,3 +750,51 @@ public struct Pointer
 
             public static bool operator !=(WeatherData left, WeatherData right) => !(left == right);
         }
+
+#CustomCollection
+    public class CustomCollection : IEnumerable
+    {
+        public string[] Words { get; }
+        public CustomCollection(string[] words)
+        {
+            Words = words;
+        }
+
+        public IEnumerator GetEnumerator()
+        {
+            return new WordsEnumerator(Words);
+        }
+    }
+
+    public class WordsEnumerator : IEnumerator
+    {
+        public object Current
+        {
+            get
+            {
+                return _words[_currentIndex];
+            }
+        }
+
+        private int _currentIndex = -1;
+        private readonly string[] _words;
+
+
+        public WordsEnumerator(string[] words)
+        {
+            _words = words;
+        }
+
+        public bool MoveNext()
+        {
+            _currentIndex++;
+            if (_currentIndex > _words.Length-1) return false;
+            return true;
+        }
+
+        public void Reset()
+        {
+            _currentIndex = -1;
+        }
+    }
+    

@@ -415,7 +415,11 @@ Time Consumption (performance measurement)
 
 Invariant: You cannot substitute one generic type argument for another, even if there is inheritance relationship between those types Refer: #Invariant
 
-Covariance is required when a generic interface (or delegate) should allow a derived implementation that uses a derived type argument to be assigned to a base interface reference that uses the base type argument.     
+Covariance is required when a generic interface (or delegate) should allow a derived implementation that uses a derived type argument to be assigned to a base interface reference that uses the base type argument.
+    Covariance allows a generic interface to safely substitute a more derived type (Dog) where a base type (Animal) is expected.
+    This works only if the interface is a producer of the generic type (returns T, never accepts it).
+    The out keyword on the interface makes this possible.
+    As a result, PrintAnimals works with both dog and cat providers.
 Refer: #Covariance
 
 Contravariance is the opposite of Covariance. Refer: #Contravariance
@@ -856,3 +860,26 @@ Nullable reference types are a C# compiler feature introduced in C# 8.0 to help 
     name?.Length -> returns null when name is null  (Null conditional operator)
     name!.Length -> dangerous null ignore (Null forgiving operator)
 
+Collections:
+    IEnumerable
+    ↑
+    ICollection
+    ↑
+    IList
+Note LINQ libraries many functionalities are simply an extension of IEnumerable interface    
+IEnumerable → “This collection can be iterated. I can give you an IEnumerator.”
+IEnumerator → “I am the thing that actually does the iteration.”
+    string[] words = new string[] { "Sunny", "Phoebe"};
+    IEnumerator enumerator = words.GetEnumerator();
+    while (enumerator.MoveNext())
+    {
+        Console.WriteLine(enumerator.Current);
+    }
+    and syntatic sugar equivalent is foreach(var word in words) Console.WriteLine(word);
+
+CustomCollection:
+    To implement custom collection inherit from IEnumerable Interface additionally implement IEnumerator from a class that will be used in the Custom collection GetEnumerator
+    Class that IEnumerator needs to have Object Property Current that holds the current Pointer in the array, MoveNext increments and checks if the next index available 
+    refer: #CustomCollection
+
+Implicit and Explicit interface implementation
