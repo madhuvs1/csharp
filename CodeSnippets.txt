@@ -752,6 +752,12 @@ public struct Pointer
         }
 
 #CustomCollection
+    var customCollection = new CustomCollection(new string[] { "Sunny", "Phoebe" });
+    var enumerator = customCollection.GetEnumerator();
+    while (enumerator.MoveNext())
+    {
+        Console.WriteLine(enumerator.Current);
+    }
     public class CustomCollection : IEnumerable
     {
         public string[] Words { get; }
@@ -798,3 +804,273 @@ public struct Pointer
         }
     }
     
+#ImplicitExplicitInterface 
+
+//Generic -> calling implicit interface member: IEnumerator<string> GetEnumerator()
+var customCollection = new CustomCollection(new string[] { "Sunny", "Phoebe" });
+var enumerator = customCollection.GetEnumerator();
+while (enumerator.MoveNext())
+{
+    Console.WriteLine(enumerator.Current); //this will call object public string Current => _words[_currentIndex];
+}
+
+//Non generic calling explicit interface  IEnumerator IEnumerable.GetEnumerator()
+IEnumerable customCollection2 = new CustomCollection(new string[] { "Sunny", "Phoebe" });
+var enumerator2 = customCollection2.GetEnumerator();
+while (enumerator2.MoveNext())
+{
+    Console.WriteLine(enumerator2.Current);  //this will call object IEnumerator.Current => _words[_currentIndex];
+}
+
+public class CustomCollection : IEnumerable<string>
+{
+    private readonly string[] words;
+    public CustomCollection(string[] words)
+    {
+        this.words = words;
+    }
+    //implicit interface
+    public IEnumerator<string> GetEnumerator() { 
+            return new StringWordsEnumerator(words);
+            //instead of above line WordsEnumerator, we can use yield which returns an Iterator
+            // foreach(var word in Words) yield return word;
+            //or use Enumerator from generic IEnumerable
+            //IEnumerable<string> words = Words;
+            //return words.GetEnumerator();
+
+    }
+    
+    IEnumerator IEnumerable.GetEnumerator() => new StringWordsEnumerator(words);
+}
+
+public class StringWordsEnumerator : IEnumerator<string>
+{
+    private readonly string[] _words;
+    private int _currentIndex = -1;
+    public StringWordsEnumerator(string[] words) { _words = words; }
+
+    public string Current => _words[_currentIndex];
+
+    object IEnumerator.Current => _words[_currentIndex];
+
+    public bool MoveNext()
+    {
+        _currentIndex++;
+        if (_currentIndex > _words.Length - 1) return false;
+        return true;
+    }
+
+    public void Dispose() { }
+    public void Reset() {_currentIndex = -1;}
+}
+
+#Indexer
+    PairOfArrays<int, string> pairOfArrays = new(new int[] { 0, 2, 3 }, new string[] { "Suny", "Phoebe" });
+    pairOfArrays[0,0] = (1, "Sunny"); //Note here when setting a value we are passing a tuple and inside indexer we access it by value.Item1, value.Item2
+    Console.WriteLine(pairOfArrays[0,0]); //output: (1, Sunny)
+    
+    public class PairOfArrays<TLeft, TRight>
+    {
+        private readonly TLeft[] _left;
+        private readonly TRight[] _right;
+
+        public PairOfArrays(
+            TLeft[] left, TRight[] right)
+        {
+            _left = left;
+            _right = right;
+        }
+
+        public (TLeft, TRight) this[int tLeftIndex, int tRightIndex]
+        {
+            get
+            {
+                if (tLeftIndex > _left.Length - 1 || tRightIndex > _right.Length - 1) throw new IndexOutOfRangeException();
+                return (_left[tLeftIndex], _right[tRightIndex]);
+            }
+            set
+            {
+                if (tLeftIndex > _left.Length - 1 || tRightIndex > _right.Length - 1) throw new IndexOutOfRangeException();
+                _left[tLeftIndex] = value.Item1; _right[tRightIndex] = value.Item2;
+            }
+        }
+    }
+
+#CollectionInitializer
+CollectionInitializer collectionInitializer = new CollectionInitializer { "Sunny", "Phoebe" };
+Console.WriteLine(string.Join(",", collectionInitializer.Words)); //output: Sunny Phoebe
+
+public class CollectionInitializer: IEnumerable {
+
+    public string[] Words { get; set; }
+    private int _index = 0;
+    public CollectionInitializer() { Words = new string[10]; }
+
+    public void Add(string word) { 
+        Words[_index] = word;
+        _index++;
+    }
+
+    public IEnumerator GetEnumerator()
+    {
+        throw new NotImplementedException();
+    }
+}     
+
+#BinarySearch
+    public static int FindIndexByBinarySearch(this List<int> list, int value) {
+        int leftIndex = 0;
+        int rightIndex = list.Count - 1;
+        while (leftIndex <= rightIndex) {
+            var middleIndex = (leftIndex + rightIndex) / 2;
+            if (list[middleIndex] == value) return middleIndex;  
+            if (list[middleIndex] > value) rightIndex = middleIndex - 1; else leftIndex = middleIndex + 1;
+            //above equivalent using CompareTo if (list[middleIndex].CompareTo(value) > 0) rightIndex = middleIndex - 1; else leftIndex = middleIndex + 1;
+        }
+        return -1;
+    }
+
+#Yield
+//Take few numbers than actual exist
+YieldSample yieldSample = new YieldSample();
+IEnumerable<int> numbers = yieldSample.GetNumbers();
+foreach (int number in numbers)
+{
+    Console.WriteLine($"Consuming {number}");
+}
+// Read only few lines from a large set of data
+var fileLines = yieldSample.ReadLargeFile();
+foreach (var line in fileLines.Take(2))
+{
+    Console.WriteLine($"File content: {line}");
+}
+
+//Fibonacci series 0,1,1,2,3 (each number is the sum of two preciding numbers)
+var fibonacciSeriesIterator = yieldSample.GetFibonacciSeries();
+foreach (var number in fibonacciSeriesIterator.Take(10))
+{
+    Console.WriteLine($"Fibonacci number: {number}");
+}
+
+//Multiple yields 
+foreach(var word in  yieldSample.GetMultipleYields()){ 
+    Console.WriteLine(word);
+}
+//output: 
+hello
+world
+
+//yield values in reverse until first null encountered
+var reversedValuesUntilNull = yieldSample.GetAllAfterLastNullReversed(new string[] { "a", "b", null, "d", "e", "f"});
+foreach (var value in reversedValuesUntilNull)
+{
+    Console.WriteLine($"Consuming {value}");
+}
+//output:
+Consuming f
+Consuming e
+Consuming d
+
+public class YieldSample {
+    public IEnumerable<int> GetNumbers() {
+        for (int i = 0; i < 4; i++)
+        {
+            Console.WriteLine($"Yielding {i}");
+            yield return i;
+        }
+    }
+
+    public IEnumerable<string> ReadLargeFile()
+    {
+        string? line;
+        using var reader = new StreamReader(@"c:\logs\largefile.txt") ;
+        while((line = reader.ReadLine())!=null) {
+            yield return line;
+        }
+    }
+
+    //note here after yield return we have the statements, those gets executed after every yield
+    public IEnumerable<long> GetFibonacciSeries() {
+        long a=0, b=1;
+        while (true) { 
+            yield return a;
+            var c = a + b;
+            a = b; b = c;
+        }
+    }
+
+    //multiple yields, when iterated after one yield is done, next yield is returned 
+    public IEnumerable<string> GetMultipleYields() {
+        yield return "hello";
+        yield return "world";
+    }
+    
+    //yields values in reverse until first null encounted
+        public IEnumerable<T> GetAllAfterLastNullReversed<T>(IList<T> input)
+        {
+            foreach (var item in input.Reverse()) { 
+                if(item != null) yield return item;
+                else yield break;
+            }
+        }                
+
+}
+
+#YieldBreak
+YieldSample yieldSample = new YieldSample();
+var numbersBeforeFirstNegative = yieldSample.GetAllNumbersBeforeFirstNegative(new[] { 1, 2, 4, 5, 6, 12, 2, -1, 5, 6, 7 });
+foreach (var number in numbersBeforeFirstNegative)
+{
+    Console.WriteLine($"Consuming {number}");
+}
+    public class YieldSample {
+      public IEnumerable<int> GetAllNumbersBeforeFirstNegative(IEnumerable<int> numbers) {
+          foreach (var number in numbers) {
+              if(number >= 0) yield return number;
+              else yield break;
+              Console.WriteLine($"Yielding {number}");
+          }
+      }
+  }
+output:
+    Consuming 1
+    Yielding 1
+    Consuming 2
+    Yielding 2
+    Consuming 4
+    Yielding 4
+    Consuming 5
+    Yielding 5
+    Consuming 6
+    Yielding 6
+    Consuming 12
+    Yielding 12
+    Consuming 2
+    Yielding 2  
+
+#IEnumerableInterface  
+
+var customCollection = new CustomCollection(new string[] { "Sunny", "Phoebe" });
+foreach (var word in customCollection)
+{
+    Console.WriteLine(word);
+}
+//output: Sunny Phoebe
+public class CustomCollection : IEnumerable<string>
+{
+    private readonly string[] _words;
+    public CustomCollection1(string[] words)
+    {
+        _words = words;
+    }
+    //implicit interface
+    public IEnumerator<string> GetEnumerator() { 
+
+        foreach (var word in _words) yield return word;
+        //or use Enumerator from generic IEnumerable
+        //IEnumerable<string> words = _words;
+        //return words.GetEnumerator();
+
+    }
+   IEnumerator IEnumerable.GetEnumerator() => _words.GetEnumerator();
+} 

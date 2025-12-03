@@ -460,7 +460,7 @@ How Dictionary achieves quick lookup ?
     Dictionary internally has buckets of memory, it will store the key in one of the bucket. When you store a key -> gets the hashcode of the key ->
     say 12345 ->  Assume Dictionary has 5 buckets -> Now bucketIndex = HashCode % No. of buckets -> 1234/5 = 4. It stores the key in bucket 4. During retrieval using the 
     hashcodeOfkey % NoOfBuckets finds the bucket to find the value.
- ContainsKey checks whethere the keys exists in the Dictionary
+ ContainsKey checks whether the keys exists in the Dictionary
 
  Strategy Design Pattern- Behavioral pattern(Gof-GangOfFour)
     The behavior of a class can be decided at runtime when the abstraction it depends on is associated (or injected) with a concrete derived implementation.
@@ -883,3 +883,348 @@ CustomCollection:
     refer: #CustomCollection
 
 Implicit and Explicit interface implementation
+When  you implement an interface say inherting from IEnumerable
+public class CustomCollection: IEnumerable {
+    public IEnumerator GetEnumerator() => return new WordsEnumerator(words);
+}
+Above returned Enumerator involves object instead of string. To overcome this you want to implement IEnumerable<string>. IEnumerable<out T> also implments IEnumerable, so you have to implement methods from both interface
+However you cannot have two GetEnumerator methods with same name one from IEnumerable base interface and other from IEnumerable<string> derived interface
+public class CustomCollection: IEnumerable<string> {
+    public IEnumerator GetEnumerator() => return new WordsEnumerator(words);
+    public IEnumerator<string> GetEnumerator() { throw new NotImplementedException();  }
+}
+To overcome above duplicate method implementation, you need to explicitly mention the interface (explicit) name -> IEnumerable.GetEnumerator() also notice the access modifier should not be used.
+public class CustomCollection: IEnumerable<string> {
+    IEnumerator IEnumerable.GetEnumerator() => return new WordsEnumerator(words);
+    public IEnumerator<string> GetEnumerator() { throw new NotImplementedException();  }
+}
+Now, var customCollection = new CustomCollection();  var enumerator = customCollection.GetEnumerator(); calls IEnumerator<string> GetEnumerator()
+To call the other method explicit Interface variable, IEnumerable enumerator = customCollection.GetEnumerator(); calls IEnumerator IEnumerable.GetEnumerator()
+Refer: #ImplicitExplicitInterface 
+
+Lets say class implements 2 interfaces and both have same method with same signature, implementing one method is sufficient
+    public interface IApp { public void Run(); }
+    public interface IProcess { public void Run(); }
+    public class App : IApp, IProcess { public void Run() { } }
+However if you need you can still implement Run methods specific to an interface by explicit interface signature
+    public interface IApp { public void Run(); }
+    public interface IProcess { public void Run(); }
+    public class App : IApp, IProcess {  void IApp.Run() {} public void Run() { } }
+
+Named argument:
+Say you create instance while passing values you can name it for readability, new Random(Seed: 1);
+
+Indexers:
+An indexer lets an object be accessed like an array using the [] syntax.
+    var indexer = new Indexer(new string[] { "Suny", "Phoebe" });
+    indexer[0] = "Sunny";
+    Console.WriteLine(indexer[0]); //output: Sunny
+    
+    public class Indexer {
+        public string[] _words { get; set; }
+        public Indexer(string[] words) => _words = words;
+        public string this[int index] {get => _words[index]; set => _words[index] = value;}
+    }
+Refer: #Indexer    
+
+Collection initializers
+    Generics allow initialize classes this way, List<int> ints = new() { 1, 2, 3, 4 };
+    To achieve the same for Custom class, inherit from IEnumerable,  add default constructor, add Add Method.
+    Refer: #CollectionInitializer
+
+ICollections and IList interface
+Interface Segration Principle (SOLID): Clients shouldn’t be forced to depend on methods they don’t use. Create small, focused interfaces, not huge ones.
+Violation of Interface Segration Principle:
+    public interface IMachine {
+        void print();
+        void scan();
+        void fax();
+    }
+    public class BasicPrinter implements IMachine {
+        public void print() { /* ok */ }
+        public void scan() { throw new UnsupportedOperationException(); }
+        public void fax() { throw new UnsupportedOperationException(); }
+    }
+Solution:
+    public interface IPrinter {
+        void print();
+    }
+
+    public interface IScanner {
+        void scan();
+    }
+
+    public interface IFax {
+        void fax();
+    }
+    public class BasicPrinter implements IPrinter {
+        public void print() { /* printing code */ }
+    }
+We have the same problem in Array as well, Array implements ICollection Interface (numbers.GetType().GetInterfaces()) that has Add() method. But array is fixed size, forcing Array to implement Add method from
+ICollection interface is against Interface Segration Principle.
+ICollection<int> numbers = new int[] {1,2,3,4,5}; (Not using int[] left side as Add is implemented by Array using Explicit Interface so have to have ICollection<int> on the left side polymorphic way)
+numbers.Add(1); // with throw System.NotSupportedException
+
+Interface Segregation Principle: No code should be forced to implement methods it doesn't use
+class SomeClass {
+    void SomeMethod<T>(ICollection<T> input) where T: new(){
+        //some logic
+        input.Add(item); //imagine is Array is passed to this method it will fail, because Array forced to implement ICollection interface and Add method, it will fail as Array is fixed size.
+    }
+}
+
+Benefits of ReadOnly Collection:
+    Clear and Simple Code
+    Pure fuctions
+    Easier MultiThreading
+    Keeping objects validOnes
+    Avoiding Identity Mutation
+    Easier Testing
+
+ReadOnly collections
+    var planets = ReadPlanets();  //returned IEnumerable
+    var asList = (List<string>)planets;
+    asList.Clear(); //clears planets as well as they both point to same Reference. So IEnumerable doesn't make it truly readonly.
+Solution make it ReadonlyList
+    var planets = ReadPlanets();  // return IReadonlyList
+    asList.Clear(); //not allowed
+
+Big O Notation, a fundamental tool to analyze the cost of an algorithm. It tells how the cost of algorithm grows with the size of input.
+Below method grow linearly as the input size increases, represented as f(N)=N or O(N) meaning the function that executes is proportional to the input size
+    bool Contains<T>(IEnumerable<T> items, T itemToCheck){
+        foreach(var item in items){
+            if(item.Equals(itemToCheck))
+            {
+                return true;
+            }
+        }
+    }
+Now, below two if checks in place its still same O(N) as above, analog driving from Point A->B you are checking phone twice that doesn't alter the distance you travel
+    bool Contains<T>(IEnumerable<T> items, T itemToCheck){
+        foreach(var item in items){
+            if(item.Equals(itemToCheck))
+            {
+                return true;
+            }
+            if(item.Equals(999)) {
+                //another operation in the same loop
+            }
+        }
+    }
+O(N²) Big O Squared Complexity or Quadratic time complexity: Work grows proportional to the square of the input size. 
+Here for size N, two iterations exist causing Quadratic time complexity (O(N))
+    for (int i = 0; i < N; i++)
+    {
+        for (int j = 0; j < N; j++)
+        {
+            // work
+        }
+    }
+O(1) fastest Algorithm (Big O of 1) complexity also known as constant-time complexity. Their execution time doesn't depend on the size of the input collection. 
+Example, retrieving an item in Dictionary has constant time complexity
+
+O(log N) (Big O of log N) Complexity, Binary search uses this.
+
+O(N*M) (Big O of N and M) when two different loops involved
+    foreach(var itemA in inputA){
+        foreach(var itemB in inputB){
+        }
+    }
+
+Complexities
+    O(1) - constant
+    O(log N) - logarithmic
+    O(N) - linearly
+    O(N*N) quadratic
+
+
+Binary Search Algorithm: Checks an item exists in a sorted collection and return its index.
+    index  0   1   2   3   4   5   6   7   8   9
+    value  1   3   4   5   6   11  12  14  16  18
+    Example: Lets search for value 12
+    leftbound: 0 rightbound: 9 -> leftbound+rightbound/2 -> 4 -> Does value 12 exists at 4 ? No. Value at index 4 is less than 12 (6<12) lets continue the search right half
+    leftbound: 5 rightbound: 9 -> leftbound+rightbound/2 -> 7 -> Does index 7 has value 12 ? No. Value at index 7 is larger than 12 (12<14) lets continue the search left half
+    leftbound remain as-is: 5 rightbound: 6, leftbound+rightbound/2 -> 5 -> Does index 5 has value 12 ? No. Move to right half, left index: 6 and right index:6 and they have value 12 at index 6
+    Suppose left and right index are same and search value not found, then no further search required meaning the value is not contained in the list.
+Binary Search uses log₂(N), say you have 100 items number of iterations take to find is 7, reason 2^7 = 128 (our items are )
+log₂(n) = log₁₀(n) / log₁₀(2) (calculator)  (log base 2 of n = log base 10 of n divide by log base 10 of 2)
+log₂(n) = Y ⇔ 2^Y = n
+Say wave 100 items, log2(100) = 6.64, max it takes 7 iterations
+
+Improving performance when using list
+    List internal structure is Array, its default size is 4 from thereon capacity doubles for new items (4->8->16->32->64). If we know the size the list is going to accomodate beforehand its better to initialize the capacity to avoid unwanted memory usage List<int> numbers = new List<int>(10);
+    Initialize list from another collection. 
+        List<number> numbers = new List<int>(anotherList); From Array int[] array = { 1, 2, 3 }; List<int> list = new List<int>(array);
+        Initialize using object initializer -> List<Person> persons = new List<Person> {new Person("person1"), new Person("person2")};
+    Adding Items
+        list.Add(item); //Adds the item to the end of the list
+        list.AddRange(new[] {1,2,3,4}) or list.AddRange(new int[] {1,2,3,4}) or list.AddRange([1,2,3,4]);  //Adds multiple items at once.
+    RemoveItems
+        list.RemoveAt(index); removes an item at the specified index shifts all the elements to the left
+        list.Remove(item); removes the specified item if it exists and shifts all the elements to the left
+        list.RemoveRange(5, 10); removes 10 items from the index 5
+
+    TrimExcess: Clears unused capacity.
+        var list = new List<int>();
+
+        for (int i = 0; i < 10_000; i++)
+            list.Add(i);
+
+        for (int i = 0; i < 9_500; i++)
+            list.RemoveAt(0);
+        list.TrimExcess();
+
+LinkedList:
+    A linked list is a linear data structure where each element (called a node) contains:
+        a) The data
+        b) A reference (pointer) to the next node in the sequence
+    Nodes are stored anywhere in memory, and the list is formed by linking them through pointers.
+    Head → [Node1] → [Node2] → [Node3] → null
+
+LinkedList vs List
+Operation                        LinkedList                                                          List
+Get at Index                       O(N)                                                              O(1)
+Add Item to front                 .AddFirst->O(1) as only the pointer gets shifted              O(N) numbers.Insert(0, 0); all values from 0 to N gets shifted to the right          
+Add Item to end                    O(1)                                                         O(1) becomes O(N) if internal array needs resizing
+Delete an Item                   O(1) say A->B->C->D remove C just connect B.Next->D            O(N) removing requires shifting of elements
+
+Dictionary (under the hood)
+Its a HashTable with an Array of LinkedList
+HashCode of a 2 values can be same (HashCode collision) we have to compare their Key equals as well
+Dictionary computes the hashcode of a Key and finds the bucket index and from there it checks a specific key by comparing its key equals to match exact key
+For example: Search for Cat finds index 2, bucket has entry 14 (which is the index of Entry Array)
+Buckets array (index → entry index):
+Index:   0     1     2     3
+Value:  [ 3 ] [ -1 ] [ 14 ] [ -1 ]
+
+Entries array:
+Index | Key | Next
+-------------------
+3     | K3  | 10
+10    | K10 | -1
+14    | K14 | -1
+
+An Entry looks like this
+    struct Entry {
+        public int hashCode;
+        public TKey key;
+        public TValue value;
+        public int next;  // index of next entry in the same bucket
+    }
+Colliding keys create a chain of entries
+    If multiple keys produce the same bucket index, the dictionary chains them like this:
+Bucket 3
+   ↓
+Entry 5  →  Entry 12  →  Entry 27  →  -1
+
+HashSet:
+    List<string> names = new List<string> { "john", "andrew", "philip" };
+    Finding if name contained in names => names.Contains("henry");  List Contains complexity is O(N) as it enumerates foreach each item.
+HashSet is faster as it hashes the values and searches complexity is O(1), its faster as internally uses hashcode and retrieves faster
+    HashSet<string> names = new HashSet<string> { "apple", "banana", "orange" };
+    names.Contains("apple");
+Note: HashSet and Dictionary items stored are not stored in the order it received as List.
+For Sorted we have SortedSet and SortedDictionary
+Combining two HashSet and resulting in a new Hashset without modifying input Hashset
+        public static HashSet<T> CreateUnion<T>(
+            HashSet<T> set1, HashSet<T> set2)
+        {
+           var combinedHashSet = new HashSet<T>(set1);
+           combinedHashSet.UnionWith(set2);
+           return combinedHashSet;
+        }    
+
+Queue: Linear data structure elements added to end of the Queue, while removing removed from front of the Queue(FIFO)
+    Queue<string> queue = new Queue<string>();
+    queue.Enqueue("apple");
+    queue.Enqueue("banana");
+    Console.WriteLine(queue.Dequeue()); //apple
+    Console.WriteLine(queue.Dequeue()); //banana
+    Peak Method: queue.Peek() allows to see the value without removing the item from the queue.
+
+PriorityQueue: Queue that takes priority for the item when entered
+    PriorityQueue<string, int> priorityQueue = new PriorityQueue<string, int>();
+    priorityQueue.Enqueue("apple", 2);
+    priorityQueue.Enqueue("banana", 5);
+    priorityQueue.Enqueue("orange", 4);
+    priorityQueue.Enqueue("grape", 1);
+    priorityQueue.Enqueue("mango", 3);
+
+    Console.WriteLine(priorityQueue.Dequeue()); //grape
+    Console.WriteLine(priorityQueue.Dequeue()); //apple
+    Console.WriteLine(priorityQueue.Dequeue()); //mango
+    Console.WriteLine(priorityQueue.Dequeue()); //orange
+    Console.WriteLine(priorityQueue.Dequeue()); //banana
+
+Stack:
+    Stack is a linear data structure, where elements added and removed to/from the top, that stores elements in a LIFO (Last-In, First-Out) order.
+    Stack<string> stack = new Stack<string>();
+    stack.Push("apple");
+    stack.Push("banana");
+    stack.Push("orange");
+    stack.Push("grape");
+    stack.Push("mango");
+    Console.WriteLine(stack.Pop()); //mango
+    Console.WriteLine(stack.Pop()); //grape
+    Console.WriteLine(stack.Pop()); //orange
+    Console.WriteLine(stack.Pop()); //banana
+    Console.WriteLine(stack.Pop()); //apple
+
+params: The params modifier allows a method to accept a variable number of arguments as a single parameter.
+PrintNumbers(1, 2, 3, 4);
+ void PrintNumbers(params int[] numbers)
+{
+    foreach (var n in numbers)
+        Console.WriteLine(n);
+}   
+Only one parameter in a method can use the params modifier, and it must be the last parameter in the method’s parameter list.
+    void Log(string message, params string[] tags) { }
+
+Stack Extension method: checks if any items in given input exists inside Stack (note: we are not pop-ing the item)
+ public static bool DoesContainAny(this Stack<string> stack, params string[] input) =>
+     stack.ToArray().Intersect(input).Any();
+
+Yield
+    Yield returns an Iterator consider it as a state machine. Iterator is a container of data and doesn't return immediately. As you enumerate thats when data is returned one by one.
+    Lets say you're reading 10GB of file, you may need only first few lines yield can help here. 
+    Refer: #Yield
+
+    YieldSample yieldSample = new YieldSample();
+    IEnumerable<int> numbers = yieldSample.GetNumbers();
+    foreach (int number in numbers)
+    {
+        Console.WriteLine($"Consuming {number}");
+    }
+    public class YieldSample {
+        public IEnumerable<int> GetNumbers() {
+            for (int i = 0; i < 4; i++)
+            {
+                Console.WriteLine($"Yielding {i}");
+                yield return i;
+            }
+        }
+    }
+output:
+    Yielding 0
+    Consuming 0
+    Yielding 1
+    Consuming 1
+    Yielding 2
+    Consuming 2
+    Yielding 3
+    Consuming 3
+
+Yield Break: 
+    Stops the Iterator from further yield    
+
+IEnumerable interface using Iterators
+When implementing IEnumerable interface instead of Custom Enumerator like WordsEnumerator, we can use yield to return an iterator.
+#IEnumerableInterface    
+
+Note: int i=100000; can also be written as 100_000; C# allows digit separators using the underscore _ to make large numbers easier to read.
+
+List can be initialized with capacity, var list = new List<string>(1000000);
+
+Innerclass
+public class ClassA { public class ClassB { private class ClassC {} }  }
+Only classes directly under namespace cannot be private 
