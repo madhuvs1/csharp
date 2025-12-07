@@ -1228,3 +1228,370 @@ List can be initialized with capacity, var list = new List<string>(1000000);
 Innerclass
 public class ClassA { public class ClassB { private class ClassC {} }  }
 Only classes directly under namespace cannot be private 
+
+MultiThreading and Asynchrony
+Process: An executing instance of a program that contains its own memory space and resources, operating independently of other processes
+Thread: An execution unit(smallest piece of program that's executed by the CPU) within a process
+Let's say .Net App acquired 25 threads from OS Scheduler and in a 8 core CPU, only 8 threads get a CPU time slice and other threads get to execute after the first 8 threads time slice is complete
+Process                         Thread
+Container for Threads           Contained within a process
+Can contain multiple threads    Belongs to a single process
+Heavyweight                     lightweight
+Mostly Isolated                 Share some data (heap)
+
+Multithreading: Capability of a program to execute multiple threads. Multiple threads can run concurrently or parallely.
+Concurrency vs Parallelism:
+Concurrency: Two or more tasks can start, run and complete in overlapping time periods
+Concurrency = Multitasking (You switch between tasks, giving the illusion of doing them together)
+Concurrency = Doing many things at once (but not necessarily at the same time).
+
+Parallelism: Two or more tasks can run at the same time.
+Parallelism = Actually running things at the exact same time.
+Parallelism = Multi-execution (Multiple tasks literally running simultaneously on multiple CPU cores)
+
+Asynchrony: Asynchrony paves the way for unblocking and releasing threads back to the pool until the IO operation is complete
+
+ProcessorCount: Environment.ProcessorCount
+Shows the current thread: Thread.CurrentThread.ManagedThreadId
+Debug->Windows->Threads Shows the threads for the app
+
+
+Multiple threads when executed you will see Worker threads Thread1 and Thread2 are executed simultaneously meaning 
+output looks like this, 9,8 are ThreadId, - and + are appearing interchangeably 
+9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-8:+8:+9:-9:-8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-
+9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-8:+9:-9:-8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+9:-
+9:-9:-9:-9:-8:+8:+8:+8:+9:-8:+9:-9:-9:-9:-9:-9:-9:-9:-8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-9:-8:+8:+8:
++8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:+8:
+
+thread1.start() is first executed you see at times PrintMinus() method got executed in the above output, .start() only means asking the OS to queue this thread and immediately returns to call other .start(),
+Main thread: thread1.Start() → returns immediately
+Main thread: thread2.Start() → returns immediately
+OS scheduler: starts running both threads concurrently
+
+
+var threadSample = new ThreadSample();
+var thread1 = new Thread(() => threadSample.PrintPlus());
+var thread2 = new Thread(() => threadSample.PrintMinus());
+
+thread1.Start();
+thread2.Start();
+public class ThreadSample {
+    public void PrintPlus() { 
+        for (int i = 0; i < 100; i++) Console.Write($"{Thread.CurrentThread.ManagedThreadId}:+");
+    }
+    public void PrintMinus()
+    {
+        for (int i = 0; i < 100; i++) Console.Write($"{Thread.CurrentThread.ManagedThreadId}:-");
+    }
+}
+
+Why we need Multithreading and Asynchrony
+Multithread allows execute multiple code units increasing the performance
+Asynchronous blocks execute in a non-blocking way allowing the application to responsive
+Creating new Threads manually has the drawback of Allocating threads by negotiating with OS and allocating resources for memory, instead using ThreadPool a preallocated number of threads is efficient
+refer: #ManualThread
+
+Foreground thread Background thread
+Application will close when no Foreground threads exist, doesn't wait for Background threads to finish if there are no Foreground thread.
+
+Task Parallel Library (TPL)
+Core component of a TPL is Task that represents a unit of work that can be executed Asynchronously on a separate thread.
+Resembles a Thread work item but at a higher level of Abstraction.
+Allows more efficient and more scalable use of system resources, TPL queues Tasks to the ThreadPool.
+Rich set of methods: 
+waiting for a task to be finished
+cancelling a task that is running
+executing some code after the task is completed
+handling exceptions thrown in the code executed within a task
+Refer: #Task
+
+Returning a value from a Task
+Using Thread directly we wait for the thread to finish using Join() method 
+    string result = null;
+    var thread = new Thread(() => {result = "HelloWorld";});
+    thread.Start();
+    thread.Join(); //wait for the thread to be finished
+    Console.WriteLine(result);
+
+Using Task
+var threadSample = new ThreadSample();
+    var word = "HelloWorld";
+    Task<int> task = Task.Run(() => threadSample.CalculateLength(word)); //Note here Generic type task used as the return of CalculateLength is int
+    Console.WriteLine($"Length of {word} is {task.Result}"); //Note Task.Result is a blocking operation Main Thread waits until the task is completed
+
+Wait and WaitAll methods
+Tasks that do not return Result, Wait Method can be used. Below since Wait method is used it will wait until taskWithNoResult is completed. 
+    var taskWithNoResult = Task.Run(() => { Thread.Sleep(1000); Console.WriteLine("Hello World"); });
+    taskWithNoResult.Wait();
+    Console.WriteLine("Executed after taskWithNoResult is completed");
+For multiple tasks to be awaited, WaitAll method can be used.
+    var task1 = Task.Run(() => { Thread.Sleep(1000); Console.WriteLine("Task1 executed"); });
+    var task2 = Task.Run(() => { Thread.Sleep(1000); Console.WriteLine("Task2 executed"); });
+    Task.WaitAll(task1, task2); 
+    Console.WriteLine("Executed after task1 and task2 are completed");    
+
+Continuations (ContinueWith method)
+    Wait for Task completion in a non-blocking way. ContinueWith lets the thread continue and "Enter UserInput" is printed immediately, user get to type uninterruptedly in the mean time if the Task Completes 
+    "Task Completed" prints and continues to let user write. Since console is shared there is a slight interruption as Task completion message writes to console, instead in the ContinueWith has async db update 
+    user will not see that interruption as well.
+    Task.Run(() => { Thread.Sleep(5000); return "Hello World".Length;  }).ContinueWith(t => { Console.WriteLine("Task Completed"); Console.WriteLine(t.Result); });
+            Console.WriteLine("Enter UserInput");
+            while(Console.ReadLine() != "exit"){ 
+        }
+Chained Continuations
+    Here HelloWorld continues to print, while Tasks are running in the background thread pool 
+    Task.Run(() => {Thread.Sleep(5000); Console.WriteLine("Task1");}).ContinueWith(t => {Thread.Sleep(5000); Console.WriteLine("Task2");})
+        .ContinueWith(t => {Thread.Sleep(5000); Console.WriteLine("Task3");});
+
+    while(true)
+    {
+        Console.WriteLine("Hello World!");
+        Thread.Sleep(1000);
+    }
+alternate approach
+    Task<string>[] tasks = new Task<string>[] {
+        Task.Run(() => {Thread.Sleep(5000); return "Task1";}),
+        Task.Run(() => {Thread.Sleep(5000); return "Task2";}),
+        Task.Run(() => {Thread.Sleep(5000); return "Task3";})
+    };
+    var continuationTask = Task.Factory.ContinueWhenAll(tasks, tasks1 => Console.WriteLine("All tasks completed: " + string.Join(",", tasks1.Select(t => t.Result))));
+
+    while (true) { 
+        Thread.Sleep(1000);
+        Console.WriteLine("Continuing not waiting for Task to complete...");
+    }
+Note: when ContinueWhenAll (or ContinueWith)  is called Tasks have completed their work
+Note: Closures capture variables not values, closure -> below if you haven't copied i to variabel copy, all tasks (array) at the end would capture variable last variable value i=5 not as you expect to 
+have individual tasks to hold task0=1 holds 1, task1 holds 2 and so on. A closure is a lambda that captures and references variables from its outer scope. Variable value used only when the function is run
+    int a = 10;
+    Func<int> f = () => a + 5;  // closure
+    f(); //at this time closure captures the variable value, as for Tasks when Task.Run is run it captures variable, but note Task.Run only queues the work to ThreadPool doesn't run immediately
+**“Task.Run schedules work to the .NET ThreadPool.
+
+The ThreadPool selects an available Worker Thread (or creates one if needed) to run the work.
+The OS Scheduler decides when that Worker Thread gets CPU time (its time slice).”**    
+    for (int i = 1; i <= 5; i++)
+    {
+        int copy = i;            // capture this value important otherwise if not this line all task will point to value 5
+        tasks[i - 1] = Task.Run(() => copy * copy);
+    }
+Refer: #TaskContinue    
+
+Task.FromResult
+return Task.FromResult(string.Empty); return empty string in a method that has return type public Task<string> method() {return Task.FromResult(string.Empty); }
+If the method is async and has return Type public async Task<string> method()  {return ""; } async method wraps return type in Task
+
+Cancelling Task
+“CancellationToken is used to signal that cancellation has been requested.
+Any task or async method that supports cancellation must cooperatively stop by accepting(as param) a CancellationToken and checking it periodically during execution.”
+
+Task Lifecycle
+Task when run carries a Id (TaskId) and Status: Running(one of the status)
+Created: Initial status when created and waiting for to be scheduled.
+WaitingForActivation: Status when waiting for other operation, like ContinueWith
+WaitingToRun: Task is ready to be started and waiting for Scheduler to Run 
+Running: When task started running, this state lasts until the task is completed
+WaitingForChildrenToComplete: If the tasks has child tasks, it carries this status.
+var parentTask = Task.Run(() => Console.WriteLine("parent task); var child = Task.Run(() => Console.WriteLine("child task);))
+Finally lifecycle of task ends, it ends with one of these states:
+Cancelled: If the task is cancelled before its completing, it has this state.
+RanToCompletion: Everything goes Task with end with this status. Also note Task<string> result = Task.FromResult("success") return result; This task immediately gets into RanToCompletion used in unit tests.
+Faulted: When the Task runs into exception
+
+OperationCancelledException
+Raise the OperationCancelledException when Task Cancelled, so the Caller can see the Task Status as Cancelled
+CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+Task task = Task.Run(() => TaskCancellationSample.NeverEndingMethod(cancellationTokenSource), cancellationTokenSource.Token);
+public static void NeverEndingMethod(CancellationTokenSource cancellationTokenSource) {
+    do {
+        Console.WriteLine("Working...");
+        Thread.Sleep(3000);
+    } while (cancellationTokenSource.IsCancellationRequested == false);
+}
+cancellationTokenSource.Cancel();
+After this Cancel, you check task.Status has RanToCompletion (actually it should be Cancelled). To achieve that modify the above code
+Refer: #OperationCancelledException
+
+Exception thrown by Threads
+Exception thrown in a thread can crash the application when not handled properly, here though you have try catch exception thrown inside the thread will be uncaught.
+    try
+    {
+        Thread thread = new Thread(() => ThreadExceptionSample.MethodThrowsException());
+        thread.Start();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex.Message);
+    }
+    Console.ReadLine();  
+    public class ThreadExceptionSample
+    {
+        public static void MethodThrowsException() {
+            Console.WriteLine("In MethodThrowsException");
+            throw new Exception("Exception in MethodThrowsException");
+        }
+    } 
+Exception thrown by Task
+Task doesn't crash the application like Thread did, however still catch block cannot catch the exception, as the Task is only queued it may run later point. unless you use task.Wait(), 
+note the AggregateException because Task can have child task as well so there cane be more than one exception.
+try
+{
+    Task task = Task.Run(() => ThreadExceptionSample.MethodThrowsException());  
+    //task.Wait();
+}
+catch (AggregateException ex)
+{
+    Console.WriteLine(ex.Message);
+}
+Console.ReadLine();
+    public class ThreadExceptionSample
+    {
+        public static void MethodThrowsException() {
+            Console.WriteLine("In MethodThrowsException");
+            throw new Exception("Exception in MethodThrowsException");
+        }
+    }
+  
+Asynchronous Exception Handling
+Task exception handled using ContinueWith this is better than task.Wait() as that would block thread.
+    Task task = Task.Run(() => ThreadExceptionSample.MethodThrowsException());
+    Task taskResult = task.ContinueWith(faultedTask => Console.WriteLine(task.Exception.Message), TaskContinuationOptions.OnlyOnFaulted);
+    Console.ReadLine();
+    public class ThreadExceptionSample
+    {
+        public static void MethodThrowsException() {
+            Console.WriteLine("In MethodThrowsException");
+            throw new Exception("Exception in MethodThrowsException");
+        }
+    }
+
+Handling AggregateException
+Tasks can throw more than one exception, that can be handled using ContinueWith+faultedTask.Exception.Handle and take necessary action based on ExceptionType. Note once exception handled return true so the task status will be set to 
+RanToCompletion, otherwise it would be set to Faulted. Lets say you pass the input AggregateExceptionSample.Divide(5, 0) it results in DivideByZeroException and its not handled in ContinueWith so the 
+status will be set to Faulted. Its recommended to handle all possible exceptions in ContinueWith+faultedTask.Exception.Handle
+Task taskResult =  Task.Run(() => AggregateExceptionSample.Divide(5, 0)).ContinueWith(faultedTask =>
+{
+    faultedTask.Exception.Handle(exception => { 
+        if (exception is ArgumentNullException) {
+            Console.WriteLine("Exception in MethodThrowsException", exception.Message);
+            return true;
+        }
+        //if (exception is DivideByZeroException) {
+        //    Console.WriteLine("Exception in MethodThrowsException", exception.Message);
+        //    return true;
+        //}
+        return false;
+    });
+});
+Thread.Sleep(3000);
+while (true) { 
+    Console.WriteLine("Working");
+    Thread.Sleep(1000);
+}   
+public class AggregateExceptionSample
+{
+    public static float? Divide(int? x, int? y) {
+        if(x == null || y == null) throw new ArgumentNullException("Argument cannot be null");
+        if (y == 0) throw new DivideByZeroException("Divisor cannot be zero");
+        
+        return x / (float) y;  //cast one of the operand as float to get decimal value, either divident or divisor
+        throw new Exception("Exception in MethodThrowsException");
+    }
+}
+Refer: #AggregateException    
+
+Multiple Continuations:
+Here you have separate ContinueWith one for Task state: OnlyOnFaulted and other for Task state: OnlyOnRanToCompletion. As the ContinueWith is also a Task, you can separate out them.
+
+var task = new Task(() => AggregateExceptionSample.Divide(10, 0));
+task.ContinueWith(task => Console.WriteLine("Success"), TaskContinuationOptions.OnlyOnRanToCompletion);
+task.ContinueWith(faultedTask => Console.WriteLine("failed"+faultedTask.Exception.Message), TaskContinuationOptions.OnlyOnFaulted);
+task.Start();
+
+    public class AggregateExceptionSample
+    {
+        public static float? Divide(int? x, int? y)
+        {
+            if (x == null || y == null) throw new ArgumentNullException("Argument cannot be null");
+            if (y == 0) throw new DivideByZeroException("Divisor cannot be zero");
+
+            return x / (float)y;  //cast one of the operand as float to get decimal value, either divident or divisor
+            throw new Exception("Exception in MethodThrowsException");
+        }
+    }
+
+Handling Task Cancellation
+Similar to Task Status: OnlyOnFaulted, OnlyOnRanToCompletion, we could do the same for OnlyOnCanceled
+CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+Task task = Task.Run(() => TaskCancellationSample.NeverEndingMethod(cancellationTokenSource), cancellationTokenSource.Token)
+        .ContinueWith(cancelledTask => Console.WriteLine("Task cancelled"), TaskContinuationOptions.OnlyOnCanceled);
+string userInput = string.Empty;
+do
+{
+    userInput = Console.ReadLine();
+    if (userInput == "cancel") cancellationTokenSource.Cancel();
+}
+while (cancellationTokenSource.IsCancellationRequested == false);
+
+Console.WriteLine("Ending Program");
+
+Need for synchronization:
+When you run operations in Single Thread they are thread safe, but running Parallel Tasks can cause ThreadSafety issue.
+In a SingleThread, when the variable incremented and decrmented by same times, output is 0
+    var Counter = new Counter();
+    for(int i=0;i<10;i++) Counter.Increment();
+    for(int i=0;i<10;i++) Counter.Decrement();
+    Console.WriteLine(Counter.Value);
+    Console.ReadLine();
+    public class Counter { 
+        public int Value { get; private set; }
+        public void Increment() => Value++;
+        public void Decrement() => Value--;
+    }
+Lets say its run as Tasks, then you cannot guarantee the Counter.Value to be zero, as the Tasks are queued to ThreadPool and you cannot guarantee their execution so this is not thread safe.
+    var Counter = new Counter();
+    List<Task> tasks = new List<Task>(); 
+    for(int i=0;i<100;i++) tasks.Add(Task.Run(() => Counter.Increment())); 
+    for(int i=0;i<100;i++) tasks.Add(Task.Run(() => Counter.Decrement())); 
+    Task.WaitAll(tasks.ToArray());
+    Console.WriteLine(Counter.Value);
+    Console.WriteLine("Hello, World!");
+    Console.ReadLine();
+        public class Counter { 
+        public int Value { get; private set; }
+        public void Increment() => Value++;
+        public void Decrement() => Value--;
+    }
+
+Atomic operation:
+    An atomic operation is an operation thats indivisible.
+    x=1 is atomic;, x++; is not atomic as temp variable holds the increment tmp= x+1; followed x = tmp;
+
+Race Condition: Situation in Concurrent programming when multiple threads access shared data or resources
+
+Locks: Used to prevent two threads from accessing same shared resources at the same time.
+Here the lock ensures only thread at a time can enter the specific block of code, which protects shared resources(variables,objects) from concurrent access. 
+    var Counter = new Counter();
+    List<Task> tasks = new List<Task>(); 
+    for(int i=0;i<10000;i++) tasks.Add(Task.Run(() => Counter.Increment())); 
+    for(int i=0;i<10000;i++) tasks.Add(Task.Run(() => Counter.Decrement())); 
+    Task.WaitAll(tasks.ToArray());
+    Console.WriteLine(Counter.Value);
+    Console.WriteLine("Hello, World!");
+    Console.ReadLine(); 
+    public class Counter { 
+        public int Value { get; private set; }
+        private object lockValue = new object();
+        public void Increment() {
+            lock (lockValue)
+            {
+                Value++;
+            }
+        }
+        public void Decrement() {
+            lock (lockValue)
+            {
+                Value--;
+            }
+        }
+    }

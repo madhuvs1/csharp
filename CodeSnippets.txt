@@ -1074,3 +1074,218 @@ public class CustomCollection : IEnumerable<string>
     }
    IEnumerator IEnumerable.GetEnumerator() => _words.GetEnumerator();
 } 
+
+#ManualThread
+    var iterations = 100;
+    var threadSample = new ThreadSample();
+
+    Stopwatch stopwatch = new Stopwatch();
+    stopwatch.Start();
+    for(int i = 0; i < iterations; i++)
+    {
+        var thread = new Thread(threadSample.Print);
+        thread.Start();
+    }
+    stopwatch.Stop();
+    Console.WriteLine("Time elapsed: {0}ms", stopwatch.ElapsedMilliseconds);
+    //roughly takes 1130 ms
+    public class ThreadSample
+    {
+        private int _counter = 0;
+        public void Print(object obj)
+        {
+            int count = Interlocked.Increment(ref _counter);
+            Console.Write($"{count}:{Thread.CurrentThread.ManagedThreadId} ");
+        }
+    }
+
+    switch to ThreadPool, roughly takes 78ms
+    var iterations = 100;
+    var threadSample = new ThreadSample();
+
+    Stopwatch stopwatch = new Stopwatch();
+    stopwatch.Start();public class ThreadSample
+{
+    public void PrintPlus(int iterations)
+    {
+        for(int i = 0; i < iterations; i++)
+        Console.Write($"+:{Thread.CurrentThread.ManagedThreadId} ");
+    }
+    public void PrintMinus(int iterations)
+    {
+        for (int i = 0; i < iterations; i++)
+            Console.Write($"+:{Thread.CurrentThread.ManagedThreadId} ");
+    }
+}
+    CountdownEvent countdownEvent  = new CountdownEvent(iterations);
+    for(int i = 0; i < iterations; i++)
+    {
+        ThreadPool.QueueUserWorkItem(_ => { threadSample.Print(null); 
+            countdownEvent.Signal();  // <-- SIGNAL AFTER work finishes
+        });
+        ThreadPool.QueueUserWorkItem(threadSample.Print); 
+    }
+    countdownEvent.Wait();
+    stopwatch.Stop();
+    Console.WriteLine("Time elapsed: {0}ms", stopwatch.ElapsedMilliseconds);
+
+#Task
+Running multiple unit of work (task)  using Task instead of Thread
+var threadSample = new ThreadSample();
+Stopwatch stopwatch = new Stopwatch();
+stopwatch.Start();
+CountdownEvent countdownEvent  = new CountdownEvent(iterations);
+Task task1 = Task.Factory.StartNew(() => threadSample.PrintPlus(100));
+Task task2 = Task.Run(() => threadSample.PrintMinus(100));
+//older approach  Task task3 = new Task(() => threadSample.PrintPlus(100)); task3.Start();
+stopwatch.Stop();
+Console.WriteLine("Time elapsed: {0}ms", stopwatch.ElapsedMilliseconds);
+
+public class ThreadSample
+{
+    public void PrintPlus(int iterations)
+    {
+        for(int i = 0; i < iterations; i++)
+        Console.Write($"+:{Thread.CurrentThread.ManagedThreadId} ");
+    }
+    public void PrintMinus(int iterations)
+    {
+        for (int i = 0; i < iterations; i++)
+            Console.Write($"+:{Thread.CurrentThread.ManagedThreadId} ");
+    }
+}    
+
+#TaskContinue
+var result = TaskContinueSample.FormatSquaredNumbersFrom1To(5);
+Console.WriteLine(result.Result); //output: 1, 4, 9, 16, 25
+public class TaskContinueSample
+{
+    public static Task<string> FormatSquaredNumbersFrom1To(int n)
+    {
+        if (n < 0) throw new ArgumentException("n must be greater than 0");
+        if (n == 0) return Task.FromResult(string.Empty);
+        Task<int>[] tasks = new Task<int>[n];
+        for (int i = 1; i <= n; i++)
+        {
+            var variableCopy = i;
+            tasks[i - 1] = Task.Run(() => variableCopy * variableCopy);
+        }
+        Task<string> continuationTask = Task.Factory.ContinueWhenAll(tasks, tasks => string.Join(", ", tasks.Select(t => t.Result)));
+        return continuationTask;
+    }
+}
+
+#CancellationToken
+When the user types cancel CancellationToken is cancelled and NeverEndingMethod quits
+CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+Task task = Task.Run(() => TaskCancellationSample.NeverEndingMethod(cancellationTokenSource), cancellationTokenSource.Token);
+
+string userInput = string.Empty;
+do
+{
+    userInput = Console.ReadLine();
+    if(userInput == "cancel") cancellationTokenSource.Cancel();
+}
+while (cancellationTokenSource.IsCancellationRequested == false);
+
+Thread.Sleep(1000);
+Console.WriteLine("End of program");
+public class TaskCancellationSample
+{
+    public static void NeverEndingMethod(CancellationTokenSource cancellationTokenSource) {
+        do {
+            Console.WriteLine("Working...");
+            Thread.Sleep(3000);
+        } while (cancellationTokenSource.IsCancellationRequested == false);
+    }
+}
+
+#OperationCancelledException
+CancellationTokenSource cancellationTokenSource= new CancellationTokenSource();
+Task task = Task.Run(() => TaskCancellationSample.NeverEndingMethod(cancellationTokenSource), cancellationTokenSource.Token);
+
+string userInput = string.Empty;
+do
+{
+    userInput = Console.ReadLine();
+    if(userInput == "cancel") cancellationTokenSource.Cancel();
+}
+while (cancellationTokenSource.IsCancellationRequested == false);
+
+Thread.Sleep(5000);
+Console.WriteLine("End of program");
+    public class TaskCancellationSample
+    {
+        public static void NeverEndingMethod(CancellationTokenSource cancellationTokenSource) {
+            do {
+                Console.WriteLine("Working...");
+                Thread.Sleep(3000);
+                cancellationTokenSource.Token.ThrowIfCancellationRequested();
+               // or equivalent if(cancellationTokenSource.IsCancellationRequested) throw new OperationCanceledException(cancellationTokenSource.Token);
+            } while (true);
+        }
+    }
+
+#AggregateException
+Task taskResult = AggregateExceptionSample.Test(null);
+Thread.Sleep(3000);
+while (true) { 
+    Console.WriteLine("Working");
+    Thread.Sleep(1000);
+}
+ public class AggregateExceptionSample
+ {
+     public static float? Divide(int? x, int? y)
+     {
+         if (x == null || y == null) throw new ArgumentNullException("Argument cannot be null");
+         if (y == 0) throw new DivideByZeroException("Divisor cannot be zero");
+
+         return x / (float)y;  //cast one of the operand as float to get decimal value, either divident or divisor
+         throw new Exception("Exception in MethodThrowsException");
+     }
+
+     public static Task Test(string? input)
+     {
+         var task = Task.Run(() => ParseToIntAndPrint(input))
+          .ContinueWith(faultedTask => faultedTask.Exception.Handle(exception =>  
+          {
+              if (exception is ArgumentNullException)
+              {
+                  Console.WriteLine("The input is null.");
+                  return true;
+              }
+              else if (exception is FormatException)
+              {
+                  Console.WriteLine("The input is not in a correct format.");
+                  return true;
+              }
+              else if (exception is ArgumentOutOfRangeException)
+              {
+                  Console.WriteLine("Unexpected exception type.");
+                  return false;
+              }
+              return false;
+          }));
+         return task;
+     }
+     private static void ParseToIntAndPrint(string? input)
+     {
+         if (input is null)
+         {
+             throw new ArgumentNullException();
+         }
+
+         if (long.TryParse(input, out long result))
+         {
+             if (result > int.MaxValue)
+             {
+                 throw new ArgumentOutOfRangeException("The number is too big for an int.");
+             }
+             Console.WriteLine("Parsing successful, the result is: " + result);
+         }
+         else
+         {
+             throw new FormatException();
+         }
+     }
+ }
